@@ -1,6 +1,16 @@
 {
-  "name": "Storm-new",
+  "name": "Storm-devcontainer",
 //  "image": "movesrwth/storm:stable",
   "build": { "dockerfile": "Dockerfile" },
-  "runArgs": ["--name", "storm-devcontainer-new"]
+  "runArgs": ["--name", "storm-devcontainer"],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.cmake-tools",
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vscode-remote.vscode-remote-extensionpack",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  }
 }

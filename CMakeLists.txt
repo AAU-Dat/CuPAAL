@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.28)
 project(CuPAAL)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 add_executable(CuPAAL main.cpp)
 
+set(storm_DIR /opt/storm/build)
 find_package(storm REQUIRED)
 
 set(HEADER_FILES "")
