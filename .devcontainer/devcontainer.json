@@ -1,0 +1,6 @@
+{
+  "name": "Storm-new",
+//  "image": "movesrwth/storm:stable",
+  "build": { "dockerfile": "Dockerfile" },
+  "runArgs": ["--name", "storm-devcontainer-new"]
+}
