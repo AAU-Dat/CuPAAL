@@ -6,3 +6,5 @@ There are two immediate options for developing this library. Either you
 1. Install Storm on your machine, which includes CUDD (**Recommended**, Linux)
 2. Use the supplied devcontainer built on the storm image (Windows)
 
+## Doxygen
+Please use doxygen documentation for everything created.

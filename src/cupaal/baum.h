@@ -4,10 +4,12 @@
 
 #ifndef BAUM_H
 #define BAUM_H
+#include <memory>
 #include <string>
+#include <storm/models/symbolic/Model.h>
 
 namespace parser {
-    void parseAndBuildPrism(std::string const & filename);
+    std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> parseAndBuildPrism(std::string const & filename);
 }
 
 #endif //BAUM_H
