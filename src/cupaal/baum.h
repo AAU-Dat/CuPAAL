@@ -7,7 +7,7 @@
 #include <string>
 
 namespace parser {
-    void parseAndBuildPrism(std::string const & filename);
+    std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> parseAndBuildPrism(std::string const & filename);
 }
 
 #endif //BAUM_H

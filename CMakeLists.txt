@@ -4,7 +4,7 @@ project(CuPAAL)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-add_executable(CuPAAL main.cpp)
+add_executable(CuPAAL main.cpp model.cpp)
 
 set(storm_DIR /opt/storm/build)
 find_package(storm REQUIRED)

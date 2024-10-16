@@ -1,3 +1,8 @@
 {
-    "cmake.buildDirectory": "${workspaceFolder}/cmake-build-debug"
+    "cmake.buildDirectory": "${workspaceFolder}/cmake-build-debug",
+    "files.associations": {
+        "string": "cpp",
+        "format": "cpp",
+        "iostream": "cpp"
+    }
 }
