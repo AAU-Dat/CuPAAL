@@ -32,150 +32,174 @@ public:
         reachableStates = model->getReachableStates();
         managerAsSharedPointer = model->getManagerAsSharedPointer();
 
-        
         parameters = model->getParameters();
         rows = model->getRowVariables();
         cols = model->getColumnVariables();
     }
 
-    std::vector<string> GenerateSet(std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> model, int setSize, carl::Variables parameters, string distribution="", int minSize=0, bool timed=false){
+    std::vector<string> GenerateSet(std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> model, int setSize, carl::Variables parameters, string distribution = "", int minSize = 0, bool timed = false)
+    {
 
+
+        //Attempt to 
     }
 
-    std::vector<string> Run(std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> model, int numberOfSteps){
+    std::vector<string> Run(std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> model, int numberOfSteps, int currentState = -1)
+    {
 
         std::vector<string> output;
+        if (currentState = -1)
+        {
+            currentState = ResolveRandom(initialStates);
+        }
+        
 
+        while ((end(output)-begin(output)) < numberOfSteps)
+        {
+            
+            output.push_back(symbol);
+        }
+
+        return output;
     }
 
-    int ResolveRandom(storm::dd::Bdd<storm::dd::DdType::CUDD> initialStates){
-        
-        std::vector
-        
-        // Find the non-zero elements' indices
-        std::vector<int> mi;
-        for (int i = 0; i < cumsum.size(); ++i) {
-            if (cumsum[i] > 0) {
-                mi.push_back(i);
+    double ResolveRandom(storm::dd::Bdd<storm::dd::DdType::CUDD> initialStates)
+    {
+        std::vector<double> cumSumOfInitialStates = cumSum(initialStates);
+        std::vector<int> nonZeroIndicesOfInitialStates = nonzero(cumSumOfInitialStates);
+
+        double randomDouble = rand() / double(RAND_MAX);
+        int i = 0;
+
+        while (randomDouble > cumSumOfInitialStates[nonZeroIndicesOfInitialStates[i]])
+        {
+            i += 1;
+        }
+        return nonZeroIndicesOfInitialStates[i];
+    }
+
+    std::vector<int> nonzero(const std::vector<double> &v)
+    {
+        std::vector<int> indices;
+        for (int i = 0; i < v.size(); ++i)
+        {
+            if (v[i] != 0)
+            {
+                indices.push_back(i);
             }
+        }
+        return indices;
     }
-    }
-
 
 
 };
 
 
+// https://github.com/Rapfff/jajapy/blob/6a69a79e25f8d6ab08fba46c3de84f3ddc8c9756/jajapy/base/Model.py#L138
+// https://github.com/moves-rwth/storm/blob/master/src/storm/models/symbolic/Model.cpp
 
-// def generateSet(self, set_size: int, param, distribution=None, min_size=None, timed: bool=False) -> Set:
-// 		seq = []
-// 		val = []
-// 		for i in range(set_size):
-// 			if distribution == 'geo':
-// 				curr_size = min_size + int(geometric(param))
-// 			else:
-// 				if type(param) == list:
-// 					curr_size = param[i]
-// 				elif type(param) == int:
-// 					curr_size = param
+// // def generateSet(self, set_size: int, param, distribution=None, min_size=None, timed: bool=False) -> Set:
+// // 		seq = []
+// // 		val = []
+// // 		for i in range(set_size):
+// // 			if distribution == 'geo':
+// // 				curr_size = min_size + int(geometric(param))
+// // 			else:
+// // 				if type(param) == list:
+// // 					curr_size = param[i]
+// // 				elif type(param) == int:
+// // 					curr_size = param
 
-// 			if timed:
-// 				trace = self.run(curr_size,timed)
-// 			else:
-// 				trace = self.run(curr_size)
+// // 			if timed:
+// // 				trace = self.run(curr_size,timed)
+// // 			else:
+// // 				trace = self.run(curr_size)
 
-// 			if not trace in seq:
-// 				seq.append(trace)
-// 				val.append(1)
-// 			else:
-// 				val[seq.index(trace)] += 1
+// // 			if not trace in seq:
+// // 				seq.append(trace)
+// // 				val.append(1)
+// // 			else:
+// // 				val[seq.index(trace)] += 1
 
-// 		return Set(seq,val)
+// // 		return Set(seq,val)
 
+// // def run(self,number_steps: int, timed: bool = False) -> list:
+// // 		"""
+// // 		Simulates a run of length ``number_steps`` of the model and return the
+// // 		sequence of observations generated. If ``timed`` it returns a list of
+// // 		pairs waiting time-observation.
 
-// def run(self,number_steps: int, timed: bool = False) -> list:
-// 		"""
-// 		Simulates a run of length ``number_steps`` of the model and return the
-// 		sequence of observations generated. If ``timed`` it returns a list of
-// 		pairs waiting time-observation.
-		
-// 		Parameters
-// 		----------
-// 		number_steps: int
-// 			length of the simulation.
-// 		timed: bool, optional
-// 			Wether or not it returns also the waiting times. Default is False.
+// // 		Parameters
+// // 		----------
+// // 		number_steps: int
+// // 			length of the simulation.
+// // 		timed: bool, optional
+// // 			Wether or not it returns also the waiting times. Default is False.
 
-// 		Returns
-// 		-------
-// 		output: list of str
-// 			trace generated by the run.
-// 		"""
-// 		output = []
-// 		current = resolveRandom(self.initial_state)
-// 		c = 0
-// 		while c < number_steps:
-// 			[symbol, next_state, time_spent] = self.next(current)
-// 			output.append(symbol)
-// 			if timed:
-// 				output.append(time_spent)
-// 			current = next_state
-// 			c += 1
-// 		output.append(self.labelling[current])
-// 		return output
+// // 		Returns
+// // 		-------
+// // 		output: list of str
+// // 			trace generated by the run.
+// // 		"""
+// // 		output = []
+// // 		current = resolveRandom(self.initial_state)
+// // 		c = 0
+// // 		while c < number_steps:
+// // 			[symbol, next_state, time_spent] = self.next(current)
+// // 			output.append(symbol)
+// // 			if timed:
+// // 				output.append(time_spent)
+// // 			current = next_state
+// // 			c += 1
+// // 		output.append(self.labelling[current])
+// // 		return output
 
+// // def resolveRandom(m: list) -> int:
+// //      m = array(m).cumsum()
+// // 	    mi = nonzero(m)[0]
+// // 	    r = random()
+// // 	    i = 0
+// // 	    while r > m[mi[i]]:
+// // 		    i += 1
 
-// def resolveRandom(m: list) -> int:
-//      m = array(m).cumsum()
-// 	    mi = nonzero(m)[0]
-// 	    r = random()
-// 	    i = 0
-// 	    while r > m[mi[i]]:
-// 		    i += 1
-	
-// 	    return mi[i]
+// // 	    return mi[i]
 
+// // 		----------// 		----------// 		----------// 		----------// 		----------// 		----------// 		----------
 
+// // 		"""
+// // 		Generates a set (training set / test set) containing ``set_size`` traces.
 
+// // 		Parameters
+// // 		----------
+// // 		set_size: int
+// // 			number of traces in the output set.
+// // 		param: a list, an int or a float.
+// // 			the parameter(s) for the distribution. See "distribution".
+// // 		distribution: str, optional
+// // 			If ``distribution=='geo'`` then the sequence length will be
+// // 			distributed by a geometric law such that the expected length is
+// // 			``min_size+(1/param)``.
+// // 			If distribution==None param can be an int, in this case all the
+// // 			seq will have the same length (``param``), or ``param`` can be a
+// // 			list of int.
+// // 			Default is None.
+// // 		min_size: int, optional
+// // 			see "distribution". Default is None.
+// // 		timed: bool, optional
+// // 			Only for timed model. Generate timed or non-timed traces.
+// // 			Default is False.
 
+// // 		Returns
+// // 		-------
+// // 		output: Set
+// // 			a set (training set / test set).
 
-
-// 		----------// 		----------// 		----------// 		----------// 		----------// 		----------// 		----------
-
-// 		"""
-// 		Generates a set (training set / test set) containing ``set_size`` traces.
-
-// 		Parameters
-// 		----------
-// 		set_size: int
-// 			number of traces in the output set.
-// 		param: a list, an int or a float.
-// 			the parameter(s) for the distribution. See "distribution".
-// 		distribution: str, optional
-// 			If ``distribution=='geo'`` then the sequence length will be
-// 			distributed by a geometric law such that the expected length is
-// 			``min_size+(1/param)``.
-// 			If distribution==None param can be an int, in this case all the
-// 			seq will have the same length (``param``), or ``param`` can be a
-// 			list of int.
-// 			Default is None.
-// 		min_size: int, optional
-// 			see "distribution". Default is None.
-// 		timed: bool, optional
-// 			Only for timed model. Generate timed or non-timed traces.
-// 			Default is False.
-		
-// 		Returns
-// 		-------
-// 		output: Set
-// 			a set (training set / test set).
-		
-// 		Examples
-// 		--------
-// 		>>> set1 = model.generateSet(100,10)
-// 		>>> # set1 contains 100 traces of length 10
-// 		>>> set2 = model.generate(100, 1/4, "geo", min_size=6)
-// 		>>> # set2 contains 100 traces. The length of the traces is distributed following
-// 		>>> # a geometric distribution with parameter 1/4. All the traces contains at
-// 		>>> # least 6 observations, hence the average length of a trace is 6+(1/4)**(-1) = 10.
-// 		"""
+// // 		Examples
+// // 		--------
+// // 		>>> set1 = model.generateSet(100,10)
+// // 		>>> # set1 contains 100 traces of length 10
+// // 		>>> set2 = model.generate(100, 1/4, "geo", min_size=6)
+// // 		>>> # set2 contains 100 traces. The length of the traces is distributed following
+// // 		>>> # a geometric distribution with parameter 1/4. All the traces contains at
+// // 		>>> # least 6 observations, hence the average length of a trace is 6+(1/4)**(-1) = 10.
+// // 		"""
