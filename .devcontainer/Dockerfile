@@ -15,6 +15,6 @@ RUN mkdir /opt/storm/build
 WORKDIR /opt/storm/build
 
 RUN cmake ..
-RUN make install -j${NUMBER_OF_CORES}
+RUN make -j${NUMBER_OF_CORES}
 
 #RUN make -j${NUMBER_OF_CORES}
