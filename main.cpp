@@ -1,9 +1,11 @@
 #include <iostream>
-#include <storm/api/storm.h>
-#include "src/cupaal/baum.h"
+#include "src/cupaal/baum_welch.h"
+#include "src/cupaal/cudd_extensions.h"
 
 int main() {
-    parser::parseAndBuildPrism("some file path");
-    std::cout << "Hello, World!" << std::endl;
+    std::cout << "Hello, World!" << cupaal::Forward() <<"\n";
+
+    cupaal::Cudd_addExp(nullptr, nullptr);
+
     return 0;
 }
