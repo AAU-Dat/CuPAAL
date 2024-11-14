@@ -1,6 +1,5 @@
 #include <iostream>
 #include <storm/api/storm.h>
-#include "src/cupaal/baum.h"
 #include "cuddObj.hh"
 #include <storm/models/symbolic/Model.h>
 #include <storm/models/ModelType.h>
