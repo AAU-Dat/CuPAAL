@@ -1,18 +1,11 @@
 #include <iostream>
-#include <storm/api/storm.h>
-#include <storm-parsers/api/storm-parsers.h>
+#include "src/cupaal/baum_welch.h"
+#include "src/cupaal/cudd_extensions.h"
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    std::cout << "Hello, World!" << cupaal::Forward() <<"\n";
 
-
-    const auto program = storm::api::parseProgram("/workspaces/CuPAAL/polling.3.v1.prism", true);
-
-    constexpr std::vector<std::shared_ptr<storm::logic::Formula const>> formulas;
-
-    auto model = storm::api::buildSymbolicModel<storm::dd::DdType::CUDD, double>(program, formulas);
-    auto init = model->getInitialStates();
-    init.exportToDot("penis.dot");
+    cupaal::Cudd_addExp(nullptr, nullptr);
 
     return 0;
 }
