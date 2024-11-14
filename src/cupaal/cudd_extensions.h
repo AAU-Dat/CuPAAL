@@ -3,7 +3,7 @@
 #include <cuddObj.hh>
 
 namespace cupaal {
-    extern DdNode * Cudd_addExp(DdManager *dd, const DdNode *f);
+    extern DdNode * Cudd_addExp(DdManager *dd, DdNode *f);
 }
 
 #endif //CUDD_EXTENSIONS_H
