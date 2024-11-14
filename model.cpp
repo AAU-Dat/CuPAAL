@@ -3,8 +3,23 @@
 #include "cuddObj.hh"
 #include <storm/models/symbolic/Model.h>
 #include <storm/models/ModelType.h>
+#include <storm-parsers/api/storm-parsers.h>
 
 using namespace std;
+
+// lav function i Cupaal python script, som er wrapper omkring de ting i Jajapy og giver  
+//LoadPrism, Instatiate, fit_Parameters, vil vi ikke kalde i CuPaal. Istedet vil vi kalde en enkelt som gør det hele. Til det skal den bruge en path, random initial varialbes/liste over parametre som skal fittes, vores observations.
+
+
+
+
+
+
+
+
+
+
+
 
 class CupaalModel
 {
@@ -21,9 +36,20 @@ public:
     std::shared_ptr<storm::dd::DdManager<storm::dd::DdType::CUDD>> manager;
     storm::dd::Bdd<storm::dd::DdType::CUDD> emissions;
 
+    std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> parseAndBuildPrism(std::string const &filename)
+    {
+        const auto program = storm::api::parseProgram(filename);
+
+        constexpr std::vector<std::shared_ptr<storm::logic::Formula const>> formulas;
+
+        std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> symbolicmodel = storm::api::buildSymbolicModel<storm::dd::DdType::CUDD, double>(program, formulas);
+
+        return symbolicmodel;
+    }
+
     CupaalModel(const string &filePath)
     {
-        std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> model = parser::parseAndBuildPrism(filePath);
+        std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> model = parseAndBuildPrism(filePath);
         transitions = model->getTransitionMatrix();
         labels = model->getLabels();
         initialStates = model->getInitialStates();
@@ -40,11 +66,13 @@ public:
     // compute alpha return bdd
     // What are the parameters and what is the output?
     //  As input it should take initial states, transition matrix, lables, training set, emission matrix, CUDD manager,
-    storm::dd::Bdd<storm::dd::DdType::CUDD> Alpha(int numberOfTraces)
+    storm::dd::Bdd<storm::dd::DdType::CUDD> Alpha(int lengthOfTraces, CupaalModel model)
     {
         storm::dd::Bdd<storm::dd::DdType::CUDD> alpha = initialStates;
+        // int lengthOfTraces = model.emissions;
 
-        for (int i = 1; i <= numberOfTraces; i++){
+        for (int i = 1; i <= lengthOfTraces; i++)
+        {
             storm::dd::Bdd<storm::dd::DdType::CUDD> alphaTemp0 = Cudd_addApply(manager, Cudd_addTimes, emissions, alpha);
             Cudd_Ref(alphaTemp0);
             storm::dd::Bdd<storm::dd::DdType::CUDD> alphaTemp1 = Cudd_addMatrixMultiply(manager, transitions, alphaTemp0, rows, reachableStates);
@@ -57,25 +85,25 @@ public:
         return alpha;
     }
 
-//     compute alpha(model)
-//     {
-//         // make alpha variable
+    //     compute alpha(model)
+    //     {
+    //         // make alpha variable
 
-//      alpha[0] = pi \hadamard (the column that shows the properbilities 
-//      for seing the label we are looking for in each state, the vector 
-//      should be num_states long)
+    //      alpha[0] = pi \hadamard (the column that shows the properbilities
+    //      for seing the label we are looking for in each state, the vector
+    //      should be num_states long)
 
-//      //transpose transition matrix/add (swap variables)
-//      int i;
-//      for (i = 1; i <= num_obs; i++)
-//      {
-//          temp = T_actions \multiply alpha[i-1]
-//          alpha[i] = temp \hadamard (the column that shows the properbilities 
-//      for seing the label we are looking for in each state, the vector 
-//      should be num_states long)
-//      }
-//      return alpha;
-//      }
+    //      //transpose transition matrix/add (swap variables)
+    //      int i;
+    //      for (i = 1; i <= num_obs; i++)
+    //      {
+    //          temp = T_actions \multiply alpha[i-1]
+    //          alpha[i] = temp \hadamard (the column that shows the properbilities
+    //      for seing the label we are looking for in each state, the vector
+    //      should be num_states long)
+    //      }
+    //      return alpha;
+    //      }
 
     void Next(std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD>> model, int state)
     {
