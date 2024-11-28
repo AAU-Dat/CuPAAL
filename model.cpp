@@ -1,6 +1,7 @@
 #include <iostream>
 #include <storm/api/storm.h>
 #include "cuddObj.hh"
+#include "src/cupaal/helpers.h"
 #include <storm/models/symbolic/Model.h>
 #include <storm/models/ModelType.h>
 #include <storm-parsers/api/storm-parsers.h>
@@ -38,7 +39,7 @@ public:
 
     CupaalModel(const string &filePath)
     {
-        std::shared_ptr<storm::models::Model<double>> model = parseAndBuildPrism(filePath);
+        std::shared_ptr<storm::models::sparse::Model<double>> model = cupaal::parseAndBuildPrismSparseModel(filePath);
         manager = model->getManager().getInternalDdManager().getCuddManager().getManager();
         
         transitions = model->getTransitionMatrix().getInternalAdd().getCuddDdNode();

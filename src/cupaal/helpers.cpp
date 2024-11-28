@@ -16,12 +16,11 @@ void cupaal::write_dd_to_dot(DdManager *manager, DdNode *dd, const char *filenam
 }
 
 
-std::shared_ptr<storm::models::Model<double>> cupaal::parseAndBuildPrismSparseModel(
+std::shared_ptr<storm::models::sparse::Model<double>> cupaal::parseAndBuildPrismSparseModel(
     std::string const &filename) {
     const auto program = storm::api::parseProgram(filename, true);
     constexpr std::vector<std::shared_ptr<storm::logic::Formula const> > formulas;
-    // auto symbolicmodel = storm::api::buildSymbolicModel<storm::dd::DdType::CUDD, double>(program, formulas);
-    std::shared_ptr<storm::models::Model<double>> result = storm::api::buildSparseModel<double>(program, formulas);
+    auto result = storm::api::buildSparseModel<double>(program, formulas);
     return result;
 
 }
