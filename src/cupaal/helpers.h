@@ -11,8 +11,8 @@
 namespace cupaal {
     extern void write_dd_to_dot(DdManager *manager, DdNode *dd, const char *filename);
 
-    extern std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD> > parseAndBuildPrism(
-        std::string const &filename);
+    extern std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD, double>> cupaal::parseAndBuildPrism(std::string const &filename);
+    extern std::shared_ptr<storm::models::Model<double>> cupaal::parseAndBuildPrismSparseModel(std::string const &filename);
 }
 
 #endif //HELPERS_H
