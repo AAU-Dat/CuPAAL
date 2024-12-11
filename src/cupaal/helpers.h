@@ -13,6 +13,8 @@ namespace cupaal {
 
     extern std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD> > parseAndBuildPrism(
         std::string const &filename);
+
+    extern std::shared_ptr<storm::models::sparse::Model<double> > parseAndBuildPrismSparse(std::string const &filename);
 }
 
 #endif //HELPERS_H
