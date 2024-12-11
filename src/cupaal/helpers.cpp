@@ -27,3 +27,17 @@ std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD> > cupaal
     auto symbolicmodel = storm::api::buildSymbolicModel<storm::dd::DdType::CUDD, double>(program, formulas);
     return symbolicmodel;
 }
+
+
+/**
+ * @brief Parse a prism file into a sparse representation using the Storm parser
+ * @sideeffect None
+ * @see storm::api::parseProgram, storm::api::buildSymbolicModel
+*/
+std::shared_ptr<storm::models::sparse::Model<double >> cupaal::parseAndBuildPrismSparse(
+    std::string const &filename) {
+    const auto program = storm::api::parseProgram(filename, true);
+    constexpr std::vector<std::shared_ptr<storm::logic::Formula const> > formulas;
+    auto sparsemodel = storm::api::buildSparseModel<double>(program, formulas);
+    return sparsemodel;
+}
