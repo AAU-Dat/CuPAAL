@@ -9,6 +9,8 @@
 #include <storm-parsers/api/storm-parsers.h>
 
 namespace cupaal {
+    extern void *safe_malloc(size_t type_size, size_t amount);
+
     extern void write_dd_to_dot(DdManager *manager, DdNode *dd, const char *filename);
 
     extern std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD> > parseAndBuildPrism(

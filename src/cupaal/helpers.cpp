@@ -4,6 +4,15 @@
 
 #include "helpers.h"
 
+void *cupaal::safe_malloc(const size_t type_size, size_t amount) {
+    void *ptr = malloc(type_size * amount);
+    if (ptr == nullptr) {
+        fprintf(stderr, "Memory allocation failed\n");
+        exit(EXIT_FAILURE);
+    }
+    return ptr;
+}
+
 /**
  * @brief Write a decision diagram to a file.
  * @sideeffect None
