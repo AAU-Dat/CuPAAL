@@ -47,8 +47,8 @@ cupaal::Cudd_addLogPlus(
 
     F = *f;
     G = *g;
-    if (cuddIsConstant(F) && cuddV(F) == -std::numeric_limits<double>::infinity()) return (F);
-    if (cuddIsConstant(G) && cuddV(G) == -std::numeric_limits<double>::infinity()) return (G);
+    if (F == DD_MINUS_INFINITY(dd)) return(G);
+    if (G == DD_MINUS_INFINITY(dd)) return(F);
     if (cuddIsConstant(F) && cuddIsConstant(G)) {
         value = log_add(cuddV(F), cuddV(G));
         res = cuddUniqueConst(dd, value);
@@ -115,8 +115,7 @@ cupaal::addLogMMRecur(
     DD_CTFP cacheOp;
 
     statLine(dd);
-    zero = cuddUniqueConst(dd, -std::numeric_limits<double>::infinity());
-    cuddRef(zero);
+    zero = DD_MINUS_INFINITY(dd);
 
     if (A == zero || B == zero) {
         return (zero);
