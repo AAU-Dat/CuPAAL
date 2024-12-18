@@ -16,7 +16,17 @@ target_link_libraries(${PROJECT_NAME} PRIVATE storm storm-parsers BaumWelch Cudd
 target_link_directories(${PROJECT_NAME} PUBLIC /src/)
 
 add_library(BaumWelch src/cupaal/baum_welch.cpp src/cupaal/baum_welch.h)
-target_include_directories(BaumWelch PUBLIC ${HEADER_FILES} ${storm_INCLUDE_DIR})
+target_include_directories(BaumWelch
+        PUBLIC
+        ${HEADER_FILES}
+        ${storm_INCLUDE_DIR}
+        /opt/storm/build/resources/3rdparty/cudd-3.0.0/include
+        /opt/storm/resources/3rdparty/cudd-3.0.0/cudd
+        /opt/storm/build/resources/3rdparty/cudd-3.0.0/src/cudd3-build
+        /opt/storm/resources/3rdparty/cudd-3.0.0/st
+        /opt/storm/resources/3rdparty/cudd-3.0.0/epd
+        /opt/storm/resources/3rdparty/cudd-3.0.0/util
+)
 target_link_libraries(BaumWelch PRIVATE storm storm-parsers)
 
 add_library(CuddExtensions src/cupaal/cudd_extensions.cpp src/cupaal/cudd_extensions.h)

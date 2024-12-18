@@ -1,32 +1,35 @@
 #include "baum_welch.h"
 #include "helpers.h"
-
+#include <cuddInt.h>
 
 DdNode **cupaal::forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *pi, DdNode **row_vars,
                          DdNode **column_vars, const int n_vars, const int n_obs) {
     const auto alpha = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_obs + 1));
     alpha[0] = pi;
+    std::cout << "Number of variables: " << n_vars << std::endl;
+    std::cout << "Variables: " << row_vars[0]->index << std::endl;
+
 
     //Shows initial state ADD
-    std::string pi_filename = "/home/lars/CuPAAL/step_results/initial_states.dot";
+    std::string pi_filename = "/home/runge/CuPAAL/step_results/initial_states.dot";
     cupaal::write_dd_to_dot(manager, pi, pi_filename.c_str());
 
     //Shows transition ADD
-    std::string P_filename = "/home/lars/CuPAAL/step_results/transition_states.dot";
+    std::string P_filename = "/home/runge/CuPAAL/step_results/transition_states.dot";
     cupaal::write_dd_to_dot(manager, P, P_filename.c_str());
 
     for (int t = 1; t <= n_obs; t++) {
         DdNode *alpha_temp_0 = Cudd_addApply(manager, Cudd_addTimes, omega[t - 1], alpha[t - 1]);
 
         //.dot file of current alpha_temp_0
-        std::string alpha_0_filename = "/home/lars/CuPAAL/step_results/alpha_temp_0_" + std::to_string(t) + ".dot";
+        std::string alpha_0_filename = "/home/runge/CuPAAL/step_results/alpha_temp_0_" + std::to_string(t) + ".dot";
         cupaal::write_dd_to_dot(manager, alpha_temp_0, alpha_0_filename.c_str());
 
         Cudd_Ref(alpha_temp_0);
         DdNode *alpha_temp_1 = Cudd_addMatrixMultiply(manager, P, alpha_temp_0, row_vars, n_vars);
 
         //.dot file of current alpha_temp_1
-        std::string alpha_1_filename = "/home/lars/CuPAAL/step_results/alpha_temp_1_" + std::to_string(t) + ".dot";
+        std::string alpha_1_filename = "/home/runge/CuPAAL/step_results/alpha_temp_1_" + std::to_string(t) + ".dot";
         cupaal::write_dd_to_dot(manager, alpha_temp_1, alpha_1_filename.c_str());
 
         Cudd_Ref(alpha_temp_1);
@@ -34,7 +37,7 @@ DdNode **cupaal::forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *
         Cudd_Ref(alpha[t]);
 
         //.dot file of current alpha[t]
-        std::string alpha_filename = "/home/lars/CuPAAL/step_results/alpha_" + std::to_string(t) + ".dot";
+        std::string alpha_filename = "/home/runge/CuPAAL/step_results/alpha_" + std::to_string(t) + ".dot";
         cupaal::write_dd_to_dot(manager, alpha[t], alpha_filename.c_str());
 
         Cudd_RecursiveDeref(manager, alpha_temp_0);
