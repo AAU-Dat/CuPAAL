@@ -68,17 +68,16 @@ int kronecker_product() {
         COL_VAR_INDEX_OFFSET,
         COL_VAR_INDEX_MULTIPLIER
     );
-    //
+    // Add<LibraryType, ValueType> swapVariables(std::vector<std::pair<storm::expressions::Variable, storm::expressions::Variable>> const& metaVariablePairs) const;
 
-    auto row_vars2 = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), 4));
+    //auto row_vars2 = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), 2));
+    //B_as_add = Add<Dd<LibraryType>>::swapVariables(gbm, B_as_add, col_vars, row_vars, n_vars);
+    auto x = Cudd_addMatrixMultiply(gbm, B_as_add, A_as_add, row_vars, n_vars);
+    //auto x = Cudd_addTimesPlus(gbm, A_as_add, B_as_add, col_vars, 0);
 
-    std::cout << row_vars2[0]->index << std::endl;
-    auto x = Cudd_addMatrixMultiply(gbm, A_as_add, B_as_add, row_vars2, 2);
-    // auto y = Cudd_addTimesPlus(gbm, A_as_add, B_as_add, row_vars, 1);
-
-    cupaal::write_dd_to_dot(gbm, A_as_add, "/home/runge/CuPAAL/A_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, B_as_add, "/home/runge/CuPAAL/B_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, x, "/home/runge/CuPAAL/X_matix_mult.dot");
+    cupaal::write_dd_to_dot(gbm, A_as_add, "/home/lars/CuPAAL/A_matrix.dot");
+    cupaal::write_dd_to_dot(gbm, B_as_add, "/home/lars/CuPAAL/B_matrix.dot");
+    cupaal::write_dd_to_dot(gbm, x, "/home/lars/CuPAAL/X_matrix_mult.dot");
 
 
 
@@ -246,11 +245,11 @@ int main(int argc, char *argv[]) {
         4
     );
 
-    cupaal::write_dd_to_dot(gbm, transition_matrix_as_add, "/home/runge/CuPAAL/transition_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, initial_states_matrix_as_add, "/home/runge/CuPAAL/initial_states.dot");
-    cupaal::write_dd_to_dot(gbm, labelling_matrix_as_add[3], "/home/runge/CuPAAL/omega4.dot");
-    cupaal::write_dd_to_dot(gbm, alpha_result[3], "/home/runge/CuPAAL/alpha4.dot");
-    cupaal::write_dd_to_dot(gbm, beta_result[0], "/home/runge/CuPAAL/beta1.dot");
+    cupaal::write_dd_to_dot(gbm, transition_matrix_as_add, "/home/lars/CuPAAL/transition_matrix.dot");
+    cupaal::write_dd_to_dot(gbm, initial_states_matrix_as_add, "/home/lars/CuPAAL/initial_states.dot");
+    cupaal::write_dd_to_dot(gbm, labelling_matrix_as_add[3], "/home/lars/CuPAAL/omega4.dot");
+    cupaal::write_dd_to_dot(gbm, alpha_result[3], "/home/lars/CuPAAL/alpha4.dot");
+    cupaal::write_dd_to_dot(gbm, beta_result[0], "/home/lars/CuPAAL/beta1.dot");
 
     auto res = kronecker_product();
     std::cout << res << std::endl;
