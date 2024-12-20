@@ -11,34 +11,102 @@
 #define COL_VAR_INDEX_OFFSET 1
 #define COL_VAR_INDEX_MULTIPLIER 2
 
-void manual_experiment1() {
-    DdManager *gbm = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
+using state = int;
+using probability = CUDD_VALUE_TYPE;
+using label = std::string;
 
-    // Matrix A = [0.3, 0.7]
-    //            [0.1, 0.9]
-    DdNode *varX = Cudd_addNewVar(gbm);
-    Cudd_Ref(varX);
-    DdNode *varY = Cudd_addNewVar(gbm);
-    Cudd_Ref(varY);
-    DdNode *node1 = Cudd_addIte(gbm, varY, Cudd_addConst (gbm, 0.9), Cudd_addConst (gbm, 0.1));
-    Cudd_Ref(node1);
-    DdNode *node2 = Cudd_addIte(gbm, varY, Cudd_addConst (gbm, 0.7), Cudd_addConst (gbm, 0.3));
-    Cudd_Ref(node2);
-    const auto matrix_A_as_ADD = Cudd_addIte(gbm, varX, node1, node2);
+class CupaalMarkovModel {
+public:
+    std::set<state> states;
+    std::vector<label> labels;
+    std::vector<std::vector<label> > observations;
+    std::map<state, std::map<label, probability> > labeling_function; // l
+    std::map<state, std::map<state, probability> > transition_function; // tau
+    std::map<state, probability> initial_distribution; // pi
+};
 
-    // Vector B = [1, 0]
-    // DdNode *varB = Cudd_addNewVar(gbm);
-    // Cudd_Ref(varB);
-    DdNode *vector_B_as_ADD = Cudd_addIte(gbm, varY, Cudd_addConst (gbm, 0.0), Cudd_addConst (gbm, 1.0));
-    Cudd_Ref(vector_B_as_ADD);
 
-    auto mult_result = Cudd_addMatrixMultiply(gbm, matrix_A_as_ADD, vector_B_as_ADD, &varY, 1);
+class CupaalMarkovModel_Matrix {
+public:
+    std::set<state> states;
+    std::vector<label> labels;
+    std::map<label, int> label_index_map;
+    std::vector<std::vector<label> > observations;
+    probability *labelling_matrix; // omega
+    probability *transition_matrix; // P
+    probability *initial_distribution_vector; // pi
+};
 
-    cupaal::write_dd_to_dot(gbm, matrix_A_as_ADD, "/home/lars/CuPAAL/manual_A.dot");
-    cupaal::write_dd_to_dot(gbm, vector_B_as_ADD, "/home/lars/CuPAAL/manual_B.dot");
-    cupaal::write_dd_to_dot(gbm, mult_result, "/home/lars/CuPAAL/manual_result.dot");
 
-    Cudd_Quit(gbm);
+class CupaalMarkovModel_AlgebraicDecisionDiagram {
+public:
+    std::set<state> states;
+    std::vector<label> labels;
+    std::map<label, int> label_index_map;
+    std::vector<std::vector<label> > observations;
+    DdNode *labelling_ADD; // omega
+    DdNode *transition_ADD; // P
+    DdNode *initial_distribution_ADD; // pi
+};
+
+
+void initialize_model_parameters(const CupaalMarkovModel_Matrix &model) {
+    for (const state s: model.states) {
+        model.initial_distribution_vector[s] = 1.0 / static_cast<double>(model.states.size());
+    }
+    for (const state s: model.states) {
+        for (const state s_prime: model.states) {
+            model.transition_matrix[s * model.states.size() + s_prime] = 1.0 / static_cast<double>(model.states.size());
+        }
+    }
+    for (int s = 0; s < model.states.size(); s++) {
+        for (int l = 0; l < model.labels.size(); l++) {
+            model.labelling_matrix[s * model.labels.size() + l] = 1.0 / static_cast<double>(model.labels.size());
+        }
+    }
+}
+
+
+probability *forward(const CupaalMarkovModel_Matrix &model) {
+    // alpha matrix is a S x t matrix
+    auto *alpha = static_cast<probability *>(cupaal::safe_malloc(sizeof(probability),
+                                                                 model.states.size() * model.observations.at(
+                                                                     0).size()));
+
+    // alpha[t] where t = 0
+    // alpha matrix is a S x t matrix
+    // first S elements of alpha array alpha[0..5]
+    for (int t = 0; t < model.states.size(); ++t) {
+        const auto observation_index = model.label_index_map.at(model.observations.at(0).at(0));
+        const auto omega_l = model.labelling_matrix[observation_index * model.states.size() + t];
+        alpha[t] = omega_l * model.initial_distribution_vector[t];
+    }
+
+    // alpha[t] where 0 < t <= model.observations.size()
+    for (int t = 1; t < model.observations.at(0).size(); ++t) {
+        const auto alpha_index = t * model.states.size();
+        const auto observation_index = model.label_index_map.at(model.observations.at(0).at(t));
+        const auto omega_l = model.labelling_matrix[observation_index * model.states.size() + alpha_index];
+
+        // P transposed matrix multiply with alpha[t-1]
+        auto previous_transition_state_observation = 1;
+
+
+        alpha[alpha_index] = omega_l * 1.0;
+    }
+
+
+    return alpha;
+}
+
+
+void baum_welch(const CupaalMarkovModel_Matrix &model) {
+    // Initialize pi, P, and omega (based on observations)
+    initialize_model_parameters(model);
+    const auto alpha = forward(model);
+
+
+    free(alpha);
 }
 
 
@@ -51,9 +119,9 @@ void manual_experiment2() {
     Cudd_Ref(varX);
     DdNode *varY = Cudd_addNewVar(gbm);
     Cudd_Ref(varY);
-    DdNode *node1 = Cudd_addIte(gbm, varY, Cudd_addConst (gbm, 4), Cudd_addConst (gbm, 3));
+    DdNode *node1 = Cudd_addIte(gbm, varY, Cudd_addConst(gbm, 4), Cudd_addConst(gbm, 3));
     Cudd_Ref(node1);
-    DdNode *node2 = Cudd_addIte(gbm, varY, Cudd_addConst (gbm, 2), Cudd_addConst (gbm, 1));
+    DdNode *node2 = Cudd_addIte(gbm, varY, Cudd_addConst(gbm, 2), Cudd_addConst(gbm, 1));
     Cudd_Ref(node2);
     const auto matrix_A_as_ADD = Cudd_addIte(gbm, varX, node1, node2);
 
@@ -63,20 +131,20 @@ void manual_experiment2() {
     Cudd_Ref(varZ);
     DdNode *varU = Cudd_addNewVar(gbm);
     Cudd_Ref(varU);
-    DdNode *node3 = Cudd_addIte(gbm, varU, Cudd_addConst (gbm, 1.0), Cudd_addConst (gbm, 0.0));
+    DdNode *node3 = Cudd_addIte(gbm, varU, Cudd_addConst(gbm, 1.0), Cudd_addConst(gbm, 0.0));
     Cudd_Ref(node3);
-    DdNode *node4 = Cudd_addIte(gbm, varU, Cudd_addConst (gbm, 2.0), Cudd_addConst (gbm, 1.0));
+    DdNode *node4 = Cudd_addIte(gbm, varU, Cudd_addConst(gbm, 2.0), Cudd_addConst(gbm, 1.0));
     Cudd_Ref(node4);
     const auto matrix_B_as_ADD = Cudd_addIte(gbm, varZ, node3, node4);
 
     int numVars = Cudd_ReadSize(gbm);
     std::cout << numVars << std::endl;
-    int *permutation = (int *)malloc(numVars * sizeof(int));
+    int *permutation = (int *) malloc(numVars * sizeof(int));
     for (int i = 0; i < numVars; i++) {
-        permutation[i] = i;  // Default mapping: identity
+        permutation[i] = i; // Default mapping: identity
     }
 
-    permutation[2] = 1;  // Map index 2 to index 1
+    permutation[2] = 1; // Map index 2 to index 1
 
     DdNode *renamedAdd = Cudd_addPermute(gbm, matrix_B_as_ADD, permutation);
     Cudd_Ref(renamedAdd);
@@ -85,143 +153,17 @@ void manual_experiment2() {
     //                            [3, 4] X [0, 1]   [3, 10]
     auto mult_result = Cudd_addMatrixMultiply(gbm, matrix_A_as_ADD, renamedAdd, &varY, 1);
 
-    cupaal::write_dd_to_dot(gbm, matrix_A_as_ADD, "/home/lars/CuPAAL/manual_A.dot");
-    cupaal::write_dd_to_dot(gbm, matrix_B_as_ADD, "/home/lars/CuPAAL/manual_B.dot");
-    cupaal::write_dd_to_dot(gbm, renamedAdd, "/home/lars/CuPAAL/manual_B_renamed.dot");
-    cupaal::write_dd_to_dot(gbm, mult_result, "/home/lars/CuPAAL/manual_result.dot");
+    cupaal::write_dd_to_dot(gbm, matrix_A_as_ADD, "/home/runge/CuPAAL/manual_A.dot");
+    cupaal::write_dd_to_dot(gbm, matrix_B_as_ADD, "/home/runge/CuPAAL/manual_B.dot");
+    cupaal::write_dd_to_dot(gbm, renamedAdd, "/home/runge/CuPAAL/manual_B_renamed.dot");
+    cupaal::write_dd_to_dot(gbm, mult_result, "/home/runge/CuPAAL/manual_result.dot");
 
     Cudd_Quit(gbm);
 }
 
-int manual_experiment3() {
-    FILE *fp = fopen("/home/lars/CuPAAL/matrix.txt", "r");
-    if (!fp) {
-        perror("File opening failed");
-        return 1;
-    }
-
-    DdManager *dd = Cudd_Init(0, 0, CUDD_UNIQUE_SLOTS, CUDD_CACHE_SLOTS, 0);
-    DdNode *E;
-    DdNode **x, **y, **xn, **yn;
-    int nx, ny, m, n;
-    int bx = 0, sx = 1, by = 0, sy = 1;
-
-    // Allocate arrays for variables
-    x = (DdNode **)malloc(sizeof(DdNode *) * nx);
-    y = (DdNode **)malloc(sizeof(DdNode *) * ny);
-    xn = (DdNode **)malloc(sizeof(DdNode *) * nx);
-    yn = (DdNode **)malloc(sizeof(DdNode *) * ny);
-
-    // Read matrix into an ADD
-    int result = Cudd_addRead(fp, dd, &E, &x, &y, &xn, &yn, &nx, &ny, &m, &n, bx, sx, by, sy);
-    if (result == 0) {
-        printf("Matrix successfully read into an ADD.\n");
-    } else {
-        printf("Error reading matrix into an ADD.\n");
-    }
-
-    cupaal::write_dd_to_dot(dd, E, "matrix_from_file");
-
-    // Clean up
-    Cudd_RecursiveDeref(dd, E);
-    free(x);
-    free(y);
-    free(xn);
-    free(yn);
-    Cudd_Quit(dd);
-    fclose(fp);
-
-    return 0;
-}
-
-int kronecker_product() {
-    // const auto kronecker_product = static_cast<DdNode *>(cupaal::safe_malloc(sizeof(DdNode *), 4));
-    DdManager *gbm = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
-    int n_vars = ceil(log2(2));
-    int dump_n_rows = 2;
-    int dump_n_cols = 2;
-    int n_row_vars = 0;
-    int n_col_vars = 0;
-    auto row_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto col_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto comp_row_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto comp_col_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-
-    auto row_vars2 = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto col_vars2 = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto comp_row_vars2 = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto comp_col_vars2 = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    double B_mat[4] = {1, 0, 0, 1};
-    double A_mat[4] = {1, 2, 3, 4};
-
-    DdNode *A_as_add;
-    DdNode *B_as_add;
-
-    cupaal::Sudd_addRead(
-        A_mat,
-        2,
-        2,
-        gbm,
-        &A_as_add,
-        &row_vars,
-        &col_vars,
-        &comp_row_vars,
-        &comp_col_vars,
-        &n_row_vars,
-        &n_col_vars,
-        &dump_n_rows,
-        &dump_n_cols,
-        ROW_VAR_INDEX_OFFSET,
-        ROW_VAR_INDEX_MULTIPLIER,
-        COL_VAR_INDEX_OFFSET,
-        COL_VAR_INDEX_MULTIPLIER
-    );
-
-    cupaal::Sudd_addRead(
-        B_mat,
-        2,
-        2,
-        gbm,
-        &B_as_add,
-        &row_vars2,
-        &col_vars2,
-        &comp_row_vars2,
-        &comp_col_vars2,
-        &n_row_vars,
-        &n_col_vars,
-        &dump_n_rows,
-        &dump_n_cols,
-        2,
-        ROW_VAR_INDEX_MULTIPLIER,
-        2,
-        COL_VAR_INDEX_MULTIPLIER
-    );
-    // Add<LibraryType, ValueType> swapVariables(std::vector<std::pair<storm::expressions::Variable, storm::expressions::Variable>> const& metaVariablePairs) const;
-
-    //auto row_vars2 = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), 2));
-    //B_as_add = Add<Dd<LibraryType>>::swapVariables(gbm, B_as_add, col_vars, row_vars, n_vars);
-    auto transposed_a = Cudd_addSwapVariables(gbm, A_as_add, row_vars, col_vars, 1);
-
-    auto x = Cudd_addMatrixMultiply(gbm, transposed_a, B_as_add, row_vars, 1);
-    //auto x = Cudd_addTimesPlus(gbm, A_as_add, B_as_add, col_vars, 0);
-
-    std::cout << row_vars[0]->index;
-    std::cout << col_vars[0]->index;
-
-
-    cupaal::write_dd_to_dot(gbm, A_as_add, "/home/lars/CuPAAL/A_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, transposed_a, "/home/lars/CuPAAL/A_matrix_transposed.dot");
-    cupaal::write_dd_to_dot(gbm, B_as_add, "/home/lars/CuPAAL/B_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, x, "/home/lars/CuPAAL/X_matrix_mult.dot");
-
-
-
-    return 1;
-}
-
 void experimental_testing() {
-    // auto model = cupaal::parseAndBuildPrism("/home/lars/CuPAAL/models/polling.prism");
-    // auto sparsemodel = cupaal::parseAndBuildPrismSparse("/home/lars/CuPAAL/models/polling.prism");
+    // auto model = cupaal::parseAndBuildPrism("/home/runge/CuPAAL/models/polling.prism");
+    // auto sparsemodel = cupaal::parseAndBuildPrismSparse("/home/runge/CuPAAL/models/polling.prism");
     // std::cout << sparsemodel->getNumberOfStates() << std::endl;
     // std::cout << sparsemodel->getType() << std::endl;
     // storm::storage::SparseMatrix<double>::index_type var2 = 0;
@@ -243,29 +185,67 @@ void experimental_testing() {
     // }
 }
 
-DdNode random_initialization_pi(DdManager *manager, int seed, const int n_vars, const int n_obs) {
-
-    srand(seed); // Seed the random number generator
-    DdNode *pi = Cudd_ReadZero(manager); // Start with the zero ADD
-    Cudd_Ref(pi);
-
-    return pi;
-}
-
-
 int main(int argc, char *argv[]) {
     storm::utility::setUp();
     storm::settings::initializeAll("CuPAAL", "CuPAAL");
+    DdManager *gbm = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
 
-    manual_experiment2();
+    CupaalMarkovModel_Matrix model;
+    model.states = {0, 1, 2, 3, 4};
+    model.labels = {"a", "b"};
+    auto index = 0;
+    for (const auto& label : model.labels) {
+        model.label_index_map[label] = index;
+        index++;
+    }
+    model.observations.push_back({"a", "b", "b", "a", "a", "b"});
 
+    model.initial_distribution_vector = static_cast<probability *>(cupaal::safe_malloc(
+        sizeof(probability), model.states.size()));
+
+    model.transition_matrix = static_cast<probability *>(cupaal::safe_malloc(
+        sizeof(probability), model.states.size() * model.states.size()));
+    model.labelling_matrix = static_cast<probability *>(cupaal::safe_malloc(
+        sizeof(probability), model.states.size() * model.labels.size()));
+
+    baum_welch(model);
+
+    for (state s: model.states) {
+        std::cout << "probability: " << model.initial_distribution_vector[s] << std::endl;
+    }
+
+    for (state s: model.states) {
+        for (state s_prime: model.states) {
+            std::cout << "state " << s << " -> " << s_prime << " ";
+            std::cout << model.transition_matrix[s * model.states.size() + s_prime] << ", ";
+        }
+        std::cout << std::endl;
+    }
+
+    for (state s = 0; s < model.states.size(); s++) {
+        for (int l = 0; l < model.labels.size(); l++) {
+            std::cout << "labelling: " << model.labelling_matrix[s * model.labels.size() + l] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+
+    //
+    // for (auto const& [state, distribution] : model.transition_matrix) {
+    //     for (auto const [state_prime, probability] : distribution) {
+    //         std::cout << "state -> state_prime" << state << ", " << state_prime << std::endl;
+    //         std::cout << "probability" << probability << std::endl;
+    //     }
+    // }
+
+
+    Cudd_Quit(gbm);
     exit(EXIT_SUCCESS);
 }
 
-class CupaalMarkovModel {
-};
 
-// States (S)
+// States (S) = [1, 2]
+//              [3, 4]
 // Labels (L)
 // Labelling function / emissions (l)
 // Transitions (Rate)
@@ -291,5 +271,3 @@ class CupaalMarkovModel {
 
 
 // extern DdNode * Cudd_addMatrixMultiply(DdManager *dd, DdNode *A, DdNode *B, DdNode **z, int nz);
-
-
