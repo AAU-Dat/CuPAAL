@@ -34,9 +34,9 @@ void manual_experiment1() {
 
     auto mult_result = Cudd_addMatrixMultiply(gbm, matrix_A_as_ADD, vector_B_as_ADD, &varY, 1);
 
-    cupaal::write_dd_to_dot(gbm, matrix_A_as_ADD, "/home/runge/CuPAAL/manual_A.dot");
-    cupaal::write_dd_to_dot(gbm, vector_B_as_ADD, "/home/runge/CuPAAL/manual_B.dot");
-    cupaal::write_dd_to_dot(gbm, mult_result, "/home/runge/CuPAAL/manual_result.dot");
+    cupaal::write_dd_to_dot(gbm, matrix_A_as_ADD, "/home/lars/CuPAAL/manual_A.dot");
+    cupaal::write_dd_to_dot(gbm, vector_B_as_ADD, "/home/lars/CuPAAL/manual_B.dot");
+    cupaal::write_dd_to_dot(gbm, mult_result, "/home/lars/CuPAAL/manual_result.dot");
 
     Cudd_Quit(gbm);
 }
@@ -85,16 +85,16 @@ void manual_experiment2() {
     //                            [3, 4] X [0, 1]   [3, 10]
     auto mult_result = Cudd_addMatrixMultiply(gbm, matrix_A_as_ADD, renamedAdd, &varY, 1);
 
-    cupaal::write_dd_to_dot(gbm, matrix_A_as_ADD, "/home/runge/CuPAAL/manual_A.dot");
-    cupaal::write_dd_to_dot(gbm, matrix_B_as_ADD, "/home/runge/CuPAAL/manual_B.dot");
-    cupaal::write_dd_to_dot(gbm, renamedAdd, "/home/runge/CuPAAL/manual_B_renamed.dot");
-    cupaal::write_dd_to_dot(gbm, mult_result, "/home/runge/CuPAAL/manual_result.dot");
+    cupaal::write_dd_to_dot(gbm, matrix_A_as_ADD, "/home/lars/CuPAAL/manual_A.dot");
+    cupaal::write_dd_to_dot(gbm, matrix_B_as_ADD, "/home/lars/CuPAAL/manual_B.dot");
+    cupaal::write_dd_to_dot(gbm, renamedAdd, "/home/lars/CuPAAL/manual_B_renamed.dot");
+    cupaal::write_dd_to_dot(gbm, mult_result, "/home/lars/CuPAAL/manual_result.dot");
 
     Cudd_Quit(gbm);
 }
 
 int manual_experiment3() {
-    FILE *fp = fopen("/home/runge/CuPAAL/matrix.txt", "r");
+    FILE *fp = fopen("/home/lars/CuPAAL/matrix.txt", "r");
     if (!fp) {
         perror("File opening failed");
         return 1;
@@ -133,8 +133,6 @@ int manual_experiment3() {
 
     return 0;
 }
-
-
 
 int kronecker_product() {
     // const auto kronecker_product = static_cast<DdNode *>(cupaal::safe_malloc(sizeof(DdNode *), 4));
@@ -211,10 +209,10 @@ int kronecker_product() {
     std::cout << col_vars[0]->index;
 
 
-    cupaal::write_dd_to_dot(gbm, A_as_add, "/home/runge/CuPAAL/A_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, transposed_a, "/home/runge/CuPAAL/A_matrix_transposed.dot");
-    cupaal::write_dd_to_dot(gbm, B_as_add, "/home/runge/CuPAAL/B_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, x, "/home/runge/CuPAAL/X_matrix_mult.dot");
+    cupaal::write_dd_to_dot(gbm, A_as_add, "/home/lars/CuPAAL/A_matrix.dot");
+    cupaal::write_dd_to_dot(gbm, transposed_a, "/home/lars/CuPAAL/A_matrix_transposed.dot");
+    cupaal::write_dd_to_dot(gbm, B_as_add, "/home/lars/CuPAAL/B_matrix.dot");
+    cupaal::write_dd_to_dot(gbm, x, "/home/lars/CuPAAL/X_matrix_mult.dot");
 
 
 
@@ -222,8 +220,8 @@ int kronecker_product() {
 }
 
 void experimental_testing() {
-    // auto model = cupaal::parseAndBuildPrism("/home/runge/CuPAAL/models/polling.prism");
-    // auto sparsemodel = cupaal::parseAndBuildPrismSparse("/home/runge/CuPAAL/models/polling.prism");
+    // auto model = cupaal::parseAndBuildPrism("/home/lars/CuPAAL/models/polling.prism");
+    // auto sparsemodel = cupaal::parseAndBuildPrismSparse("/home/lars/CuPAAL/models/polling.prism");
     // std::cout << sparsemodel->getNumberOfStates() << std::endl;
     // std::cout << sparsemodel->getType() << std::endl;
     // storm::storage::SparseMatrix<double>::index_type var2 = 0;
@@ -244,6 +242,16 @@ void experimental_testing() {
     //     std::cout << element.getValue() << std::endl;
     // }
 }
+
+DdNode random_initialization_pi(DdManager *manager, int seed, const int n_vars, const int n_obs) {
+
+    srand(seed); // Seed the random number generator
+    DdNode *pi = Cudd_ReadZero(manager); // Start with the zero ADD
+    Cudd_Ref(pi);
+
+    return pi;
+}
+
 
 int main(int argc, char *argv[]) {
     storm::utility::setUp();
