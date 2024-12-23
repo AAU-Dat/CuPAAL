@@ -1,0 +1,37 @@
+digraph "DD" {
+size = "7.5,10"
+center = true;
+edge [dir = none];
+{ node [shape = plaintext];
+  edge [style = invis];
+  "CONST NODES" [style = invis];
+" 0 " -> " 1 " -> "CONST NODES"; 
+}
+{ rank = same; node [shape = box]; edge [style = invis];
+"F0"; }
+{ rank = same; " 0 ";
+"0x56461616f560";
+}
+{ rank = same; " 1 ";
+"0x56461616f540";
+"0x56461616f440";
+}
+{ rank = same; "CONST NODES";
+{ node [shape = box]; "0x56461616f420";
+"0x56461616f3a0";
+"0x56461616f520";
+"0x56461616f4a0";
+}
+}
+"F0" -> "0x56461616f560" [style = solid];
+"0x56461616f560" -> "0x56461616f540";
+"0x56461616f560" -> "0x56461616f440" [style = dashed];
+"0x56461616f540" -> "0x56461616f520";
+"0x56461616f540" -> "0x56461616f4a0" [style = dashed];
+"0x56461616f440" -> "0x56461616f420";
+"0x56461616f440" -> "0x56461616f3a0" [style = dashed];
+"0x56461616f420" [label = "0.7"];
+"0x56461616f3a0" [label = "0.3"];
+"0x56461616f520" [label = "0.9"];
+"0x56461616f4a0" [label = "0.1"];
+}

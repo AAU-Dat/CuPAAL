@@ -492,4 +492,4 @@ int cupaal::Sudd_addRead(
         }
     }
     return (1);
-}
+} /* end of Sudd_addRead */

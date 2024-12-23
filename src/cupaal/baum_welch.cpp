@@ -1,18 +1,22 @@
 #include "baum_welch.h"
 #include "helpers.h"
-
+#include <cuddInt.h>
 
 DdNode **cupaal::forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *pi, DdNode **row_vars,
                          DdNode **column_vars, const int n_vars, const int n_obs) {
     const auto alpha = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_obs + 1));
     alpha[0] = pi;
+
     for (int t = 1; t <= n_obs; t++) {
         DdNode *alpha_temp_0 = Cudd_addApply(manager, Cudd_addTimes, omega[t - 1], alpha[t - 1]);
+
         Cudd_Ref(alpha_temp_0);
         DdNode *alpha_temp_1 = Cudd_addMatrixMultiply(manager, P, alpha_temp_0, row_vars, n_vars);
+
         Cudd_Ref(alpha_temp_1);
         alpha[t] = Cudd_addSwapVariables(manager, alpha_temp_1, column_vars, row_vars, n_vars);
         Cudd_Ref(alpha[t]);
+
         Cudd_RecursiveDeref(manager, alpha_temp_0);
         Cudd_RecursiveDeref(manager, alpha_temp_1);
     }
