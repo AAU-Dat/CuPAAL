@@ -50,6 +50,8 @@ public:
 };
 
 // Seed is by default set to 0 and this makes it completely random. A specific seed can be used to replicate results
+// The size given is the number of random variables are needed.
+// generate_probability_array normalizes values to two decimal points
 std::vector<double> generate_probability_array(int size, int times_called=0, int seed=0) {
     if (size == 0) return {}; // Return an empty array for size 0
 
@@ -266,7 +268,7 @@ int main(int argc, char *argv[]) {
         sizeof(probability), model.states.size() * model.labels.size()));
 
 
-    baum_welch(model, 10);
+    baum_welch(model);
 
     for (state s: model.states) {
         std::cout << "probability: " << model.initial_distribution_vector[s] << std::endl;
