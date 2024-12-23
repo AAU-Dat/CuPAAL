@@ -49,22 +49,79 @@ public:
     DdNode *initial_distribution_ADD; // pi
 };
 
+// Seed is by default set to 0 and this makes it completely random. A specific seed can be used to replicate results
+std::vector<double> generate_probability_array(int size, int times_called=0, int seed=0) {
+    if (size == 0) return {}; // Return an empty array for size 0
 
-void initialize_model_parameters(const CupaalMarkovModel_Matrix &model) {
-    for (const state s: model.states) {
-        model.initial_distribution_vector[s] = 1.0 / static_cast<double>(model.states.size());
-    }
-    for (const state s: model.states) {
-        for (const state s_prime: model.states) {
-            model.transition_matrix[s * model.states.size() + s_prime] = 1.0 / static_cast<double>(model.states.size());
+    std::uniform_real_distribution<> dis(0.01, 0.99);
+    std::vector<double> probabilities(size);
+
+    std::mt19937 gen;
+    if (seed == 0) {
+        std::random_device rd;
+        gen.seed(rd());
+        for (size_t i = 0; i < size; ++i) {
+            probabilities[i] = dis(gen);
         }
     }
+    else {
+        //the geneation of a seed uses the inital seed and the times called in combination to give something that feels random even when giving similar seeds.
+        std::mt19937 gen_with_seed(seed*(times_called+1));
+
+        for (size_t i = 0; i < size; ++i) {
+            probabilities[i] = dis(gen_with_seed);
+        }
+    }
+
+    // Normalize values to sum to 1.0
+    double sum = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
+    for (double& p : probabilities) {
+        p /= sum;
+    }
+
+    // Round each probability to two decimal places and adjust the sum to exactly 1.0
+    for (double& p : probabilities) {
+        p = std::round(p * 100.0) / 100.0; // Round to two decimal places
+    }
+
+    // Adjust to ensure the sum is exactly 1.0
+    double roundedSum = std::accumulate(probabilities.begin(), probabilities.end(), 0.0);
+    double diff = 1.0 - roundedSum;
+
+    // Add or subtract the difference to the largest element to fix the sum
+    if (std::abs(diff) > 1e-9) { // Avoid floating-point precision errors
+        auto maxIt = std::max_element(probabilities.begin(), probabilities.end());
+        *maxIt += diff;
+        *maxIt = std::round(*maxIt * 100.0) / 100.0; // Re-round to ensure two decimals
+    }
+    return probabilities;
+}
+
+void initialize_model_parameters(const CupaalMarkovModel_Matrix &model, int seed = 0) {
+    int times_called_random_values = 0;
+    std::vector<double> initial_distribution = generate_probability_array(model.states.size(), seed);
+    times_called_random_values++;
+    for (const state s: model.states) {
+        model.initial_distribution_vector[s] = initial_distribution[s];
+    }
+
+    for (const state s: model.states) {
+        std::vector<double> trasition_probabilities = generate_probability_array(model.states.size(), times_called_random_values, seed);
+        times_called_random_values++;
+        for (const state s_prime: model.states) {
+            model.transition_matrix[s * model.states.size() + s_prime] = trasition_probabilities[s_prime];
+        }
+    }
+
     for (int s = 0; s < model.states.size(); s++) {
+        std::vector<double> labelling_probabilities = generate_probability_array(model.states.size(),times_called_random_values, seed);
+        times_called_random_values++;
         for (int l = 0; l < model.labels.size(); l++) {
-            model.labelling_matrix[s * model.labels.size() + l] = 1.0 / static_cast<double>(model.labels.size());
+            model.labelling_matrix[s * model.labels.size() + l] = labelling_probabilities[l];
         }
     }
 }
+
 
 
 probability *forward(const CupaalMarkovModel_Matrix &model) {
@@ -100,9 +157,9 @@ probability *forward(const CupaalMarkovModel_Matrix &model) {
 }
 
 
-void baum_welch(const CupaalMarkovModel_Matrix &model) {
+void baum_welch(const CupaalMarkovModel_Matrix &model, int seed=0) {
     // Initialize pi, P, and omega (based on observations)
-    initialize_model_parameters(model);
+    initialize_model_parameters(model, seed);
     const auto alpha = forward(model);
 
 
@@ -208,7 +265,8 @@ int main(int argc, char *argv[]) {
     model.labelling_matrix = static_cast<probability *>(cupaal::safe_malloc(
         sizeof(probability), model.states.size() * model.labels.size()));
 
-    baum_welch(model);
+
+    baum_welch(model, 10);
 
     for (state s: model.states) {
         std::cout << "probability: " << model.initial_distribution_vector[s] << std::endl;
