@@ -21,9 +21,6 @@ void *cupaal::safe_malloc(const size_t type_size, size_t amount) {
  * @return a vector of probabilities summing to 1, or an empty array if size is less than 0
  */
 std::vector<double> cupaal::generate_stochastic_probabilities(const unsigned long size, const int seed) {
-    if (size < 0) {
-        return {};
-    }
     std::vector<double> probabilities(size);
     std::uniform_real_distribution<> distribution(0.01, 0.99);
     std::random_device random_device;
