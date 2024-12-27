@@ -11,6 +11,21 @@
 #define COL_VAR_INDEX_OFFSET 1
 #define COL_VAR_INDEX_MULTIPLIER 2
 
+using state = int;
+using probability = CUDD_VALUE_TYPE;
+using label = std::string;
+
+class CupaalMarkovModel_Matrix {
+public:
+    std::set<state> states;
+    std::vector<label> labels;
+    std::map<label, int> label_index_map;
+    std::vector<std::vector<label> > observations;
+    probability *labelling_matrix; // omega
+    probability *transition_matrix; // P
+    probability *initial_distribution_vector; // pi
+};
+
 int kronecker_product() {
     // const auto kronecker_product = static_cast<DdNode *>(cupaal::safe_malloc(sizeof(DdNode *), 4));
     DdManager *gbm = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
@@ -109,6 +124,28 @@ void experimental_testing() {
     // }
 }
 
+void initialize_model_parameters(const CupaalMarkovModel_Matrix &model, int seed = 0) {
+    std::vector<double> initial_distribution = cupaal::generate_stochastic_probabilities(model.states.size(), seed);
+
+    for (const state s: model.states) {
+        model.initial_distribution_vector[s] = initial_distribution[s];
+    }
+
+    for (const state s: model.states) {
+        std::vector<double> trasition_probabilities = cupaal::generate_stochastic_probabilities(model.states.size(), seed);
+        for (const state s_prime: model.states) {
+            model.transition_matrix[s * model.states.size() + s_prime] = trasition_probabilities[s_prime];
+        }
+    }
+
+    for (int l = 0; l < model.labels.size(); l++) {
+        std::vector<double> labelling_probabilities = cupaal::generate_stochastic_probabilities(model.states.size(), seed);
+        for (int s = 0; s < model.states.size(); s++) {
+            model.labelling_matrix[s * model.labels.size() + l] = labelling_probabilities[s];
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     storm::utility::setUp();
     storm::settings::initializeAll("CuPAAL", "CuPAAL");
@@ -146,114 +183,114 @@ int main(int argc, char *argv[]) {
 
     // initial_state_estimate = [1, 0]
 
-    int dump_n_rows = 2;
-    int dump_n_cols = 2;
-    int n_row_vars = 0;
-    int n_col_vars = 0;
-
-    int n_vars = ceil(log2(2));
-    auto row_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto col_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto comp_row_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-    auto comp_col_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
-
-    DdNode *transition_matrix_as_add;
-    DdNode *initial_states_matrix_as_add;
-    auto labelling_matrix_as_add = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), 4));
-
-    auto add_result = cupaal::Sudd_addRead(
-        transition_matrix,
-        2,
-        2,
-        gbm,
-        &transition_matrix_as_add,
-        &row_vars,
-        &col_vars,
-        &comp_row_vars,
-        &comp_col_vars,
-        &n_row_vars,
-        &n_col_vars,
-        &dump_n_rows,
-        &dump_n_cols,
-        ROW_VAR_INDEX_OFFSET,
-        ROW_VAR_INDEX_MULTIPLIER,
-        COL_VAR_INDEX_OFFSET,
-        COL_VAR_INDEX_MULTIPLIER
-    );
-    std::cout << add_result << std::endl;
-
-
-    cupaal::Sudd_addRead(
-        initial_states,
-        2,
-        1,
-        gbm,
-        &initial_states_matrix_as_add,
-        &row_vars,
-        &col_vars,
-        &comp_row_vars,
-        &comp_col_vars,
-        &n_row_vars,
-        &n_col_vars,
-        &dump_n_rows,
-        &dump_n_cols,
-        ROW_VAR_INDEX_OFFSET,
-        ROW_VAR_INDEX_MULTIPLIER,
-        COL_VAR_INDEX_OFFSET,
-        COL_VAR_INDEX_MULTIPLIER
-    );
-
-    for (int t = 0; t < 4; t++) {
-        cupaal::Sudd_addRead(
-            &l_matrix[t * 2],
-            2,
-            1,
-            gbm,
-            &labelling_matrix_as_add[t],
-            &row_vars,
-            &col_vars,
-            &comp_row_vars,
-            &comp_col_vars,
-            &n_row_vars,
-            &n_col_vars,
-            &dump_n_rows,
-            &dump_n_cols,
-            ROW_VAR_INDEX_OFFSET,
-            ROW_VAR_INDEX_MULTIPLIER,
-            COL_VAR_INDEX_OFFSET,
-            COL_VAR_INDEX_MULTIPLIER
-        );
-    }
-
-    DdNode **alpha_result = cupaal::forward(
-        gbm,
-        labelling_matrix_as_add,
-        transition_matrix_as_add,
-        initial_states_matrix_as_add,
-        row_vars,
-        col_vars,
-        n_row_vars,
-        4
-    );
-
-    DdNode **beta_result = cupaal::backward(
-        gbm,
-        labelling_matrix_as_add,
-        transition_matrix_as_add,
-        row_vars,
-        col_vars,
-        n_vars,
-        4
-    );
-
-    cupaal::write_dd_to_dot(gbm, transition_matrix_as_add, "/home/runge/CuPAAL/transition_matrix.dot");
-    cupaal::write_dd_to_dot(gbm, initial_states_matrix_as_add, "/home/runge/CuPAAL/initial_states.dot");
-    cupaal::write_dd_to_dot(gbm, labelling_matrix_as_add[3], "/home/runge/CuPAAL/omega4.dot");
-    cupaal::write_dd_to_dot(gbm, alpha_result[3], "/home/runge/CuPAAL/alpha4.dot");
-    cupaal::write_dd_to_dot(gbm, beta_result[0], "/home/runge/CuPAAL/beta1.dot");
-
-    auto res = kronecker_product();
-    std::cout << res << std::endl;
+    // int dump_n_rows = 2;
+    // int dump_n_cols = 2;
+    // int n_row_vars = 0;
+    // int n_col_vars = 0;
+    //
+    // int n_vars = ceil(log2(2));
+    // auto row_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
+    // auto col_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
+    // auto comp_row_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
+    // auto comp_col_vars = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), n_vars));
+    //
+    // DdNode *transition_matrix_as_add;
+    // DdNode *initial_states_matrix_as_add;
+    // auto labelling_matrix_as_add = static_cast<DdNode **>(cupaal::safe_malloc(sizeof(DdNode *), 4));
+    //
+    // auto add_result = cupaal::Sudd_addRead(
+    //     transition_matrix,
+    //     2,
+    //     2,
+    //     gbm,
+    //     &transition_matrix_as_add,
+    //     &row_vars,
+    //     &col_vars,
+    //     &comp_row_vars,
+    //     &comp_col_vars,
+    //     &n_row_vars,
+    //     &n_col_vars,
+    //     &dump_n_rows,
+    //     &dump_n_cols,
+    //     ROW_VAR_INDEX_OFFSET,
+    //     ROW_VAR_INDEX_MULTIPLIER,
+    //     COL_VAR_INDEX_OFFSET,
+    //     COL_VAR_INDEX_MULTIPLIER
+    // );
+    // std::cout << add_result << std::endl;
+    //
+    //
+    // cupaal::Sudd_addRead(
+    //     initial_states,
+    //     2,
+    //     1,
+    //     gbm,
+    //     &initial_states_matrix_as_add,
+    //     &row_vars,
+    //     &col_vars,
+    //     &comp_row_vars,
+    //     &comp_col_vars,
+    //     &n_row_vars,
+    //     &n_col_vars,
+    //     &dump_n_rows,
+    //     &dump_n_cols,
+    //     ROW_VAR_INDEX_OFFSET,
+    //     ROW_VAR_INDEX_MULTIPLIER,
+    //     COL_VAR_INDEX_OFFSET,
+    //     COL_VAR_INDEX_MULTIPLIER
+    // );
+    //
+    // for (int t = 0; t < 4; t++) {
+    //     cupaal::Sudd_addRead(
+    //         &l_matrix[t * 2],
+    //         2,
+    //         1,
+    //         gbm,
+    //         &labelling_matrix_as_add[t],
+    //         &row_vars,
+    //         &col_vars,
+    //         &comp_row_vars,
+    //         &comp_col_vars,
+    //         &n_row_vars,
+    //         &n_col_vars,
+    //         &dump_n_rows,
+    //         &dump_n_cols,
+    //         ROW_VAR_INDEX_OFFSET,
+    //         ROW_VAR_INDEX_MULTIPLIER,
+    //         COL_VAR_INDEX_OFFSET,
+    //         COL_VAR_INDEX_MULTIPLIER
+    //     );
+    // }
+    //
+    // DdNode **alpha_result = cupaal::forward(
+    //     gbm,
+    //     labelling_matrix_as_add,
+    //     transition_matrix_as_add,
+    //     initial_states_matrix_as_add,
+    //     row_vars,
+    //     col_vars,
+    //     n_row_vars,
+    //     4
+    // );
+    //
+    // DdNode **beta_result = cupaal::backward(
+    //     gbm,
+    //     labelling_matrix_as_add,
+    //     transition_matrix_as_add,
+    //     row_vars,
+    //     col_vars,
+    //     n_vars,
+    //     4
+    // );
+    //
+    // cupaal::write_dd_to_dot(gbm, transition_matrix_as_add, "/home/runge/CuPAAL/transition_matrix.dot");
+    // cupaal::write_dd_to_dot(gbm, initial_states_matrix_as_add, "/home/runge/CuPAAL/initial_states.dot");
+    // cupaal::write_dd_to_dot(gbm, labelling_matrix_as_add[3], "/home/runge/CuPAAL/omega4.dot");
+    // cupaal::write_dd_to_dot(gbm, alpha_result[3], "/home/runge/CuPAAL/alpha4.dot");
+    // cupaal::write_dd_to_dot(gbm, beta_result[0], "/home/runge/CuPAAL/beta1.dot");
+    //
+    // auto res = kronecker_product();
+    // std::cout << res << std::endl;
     Cudd_Quit(gbm);
     exit(EXIT_SUCCESS);
 }

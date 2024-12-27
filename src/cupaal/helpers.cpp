@@ -14,6 +14,40 @@ void *cupaal::safe_malloc(const size_t type_size, size_t amount) {
 }
 
 /**
+ * @brief Create an array of values between 0 and 1, not included, which sums to 1.
+ * @param size the size of the array to be generated
+ * @param seed Controls the randomization. 0 means random. Any other value is a seed
+ * @sideeffect None
+ * @return a vector of probabilities summing to 1, or an empty array if size is less than 0
+ */
+std::vector<double> cupaal::generate_stochastic_probabilities(const unsigned long size, const int seed) {
+    std::vector<double> probabilities(size);
+    std::uniform_real_distribution<> distribution(0.01, 0.99);
+    std::random_device random_device;
+    std::mt19937 generator(random_device());
+
+    if (seed != 0) {
+        generator.seed(seed);
+    }
+
+    for (int i = 0; i < size; ++i) {
+        probabilities[i] = distribution(generator);
+    }
+
+    // normalize
+    double sum = 0.0;
+    for (const auto probability : probabilities) {
+        sum += probability;
+    }
+    for (double& p : probabilities) {
+        p /= sum;
+    }
+
+    return probabilities;
+};
+
+
+/**
  * @brief Write a decision diagram to a file.
  * @sideeffect None
  * @see Storm's exportToDot
