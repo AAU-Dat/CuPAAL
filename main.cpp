@@ -24,6 +24,8 @@ public:
     probability *labelling_matrix; // omega
     probability *transition_matrix; // P
     probability *initial_distribution_vector; // pi
+    int number_of_observations;
+    int number_of_states;
 };
 
 int kronecker_product() {
@@ -146,10 +148,59 @@ void initialize_model_parameters(const CupaalMarkovModel_Matrix &model, int seed
     }
 }
 
+void forwards_matrices(const CupaalMarkovModel_Matrix &model) {
+    // Allocate alpha
+    std::vector<double> alpha((model.number_of_states + 1) * model.number_of_states, 0.0);
+
+    // Base case: t = 0
+    for (int t = 0; t < model.number_of_states; t++) {
+        alpha[t] = model.initial_distribution_vector[t];
+    }
+
+    // Case: 0 < t <= n_obs
+    for (int t = 0; t < model.number_of_states; ++t) {
+        for (int s = 0; s < model.number_of_states; ++s) {
+            double temp = 0.0;
+            for (int ss = 0; ss < model.number_of_states; ++ss) {
+                temp += model.transition_matrix[ss * model.number_of_states + s] * model.labelling_matrix[t * model.number_of_states + ss] * alpha[t * model.number_of_states + ss];
+            }
+            alpha[(t + 1) * model.number_of_states + s] = temp;
+        }
+    }
+}
+
+void backwards_matrices(const CupaalMarkovModel_Matrix &model) {
+    // Allocate beta
+    std::vector<double> beta((model.number_of_states + 1) * model.number_of_states, 0.0);
+
+    for (int t = 0; t < model.number_of_states; t++) {
+        beta[model.number_of_observations * model.number_of_states + t] = 1;
+    }
+
+    for (int t = 0; t < model.number_of_states; t++) {
+        for (int s = 0; s < model.number_of_states; ++s) {
+            double temp = 0.0;
+            for (int ss = 0; ss < model.number_of_states; ++ss) {
+                temp += beta[t*model.number_of_states + ss] * model.transition_matrix[s * model.number_of_states + ss];
+            }
+            beta[(t-1) * model.number_of_states + s] = model.labelling_matrix[(t-1)*model.number_of_states + s] * temp;
+        }
+    }
+}
+
+
+void baum_welch(const CupaalMarkovModel_Matrix &model, int seed=0) {
+    // Initialize pi, P, and omega (based on observations)
+    initialize_model_parameters(model, seed);
+    forwards_matrices(model);
+}
+
 int main(int argc, char *argv[]) {
     storm::utility::setUp();
     storm::settings::initializeAll("CuPAAL", "CuPAAL");
     DdManager *gbm = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
+
+    baum_welch( model);
 
     // states = {"a", "b"} = {1, 2}
     // labels = {"hungry", "full"}
