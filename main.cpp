@@ -129,13 +129,13 @@ void experimental_testing() {
 void initialize_model_parameters(const CupaalMarkovModel_Matrix &model, int seed = 0) {
     std::vector<double> initial_distribution = cupaal::generate_stochastic_probabilities(model.states.size(), seed);
 
-    for (const state s: model.states) {
+    for (state s = 0; s < model.states.size(); s++) {
         model.initial_distribution_vector[s] = initial_distribution[s];
     }
 
-    for (const state s: model.states) {
+    for (state s = 0; s < model.states.size(); s++) {
         std::vector<double> trasition_probabilities = cupaal::generate_stochastic_probabilities(model.states.size(), seed);
-        for (const state s_prime: model.states) {
+        for (state s_prime = 0; s_prime < model.states.size(); s_prime++) {
             model.transition_matrix[s * model.states.size() + s_prime] = trasition_probabilities[s_prime];
         }
     }
@@ -167,6 +167,14 @@ void forwards_matrices(const CupaalMarkovModel_Matrix &model) {
             alpha[(t + 1) * model.number_of_states + s] = temp;
         }
     }
+
+    std::cout << "Alpha Matrix:" << std::endl;
+    for (int t = 0; t < model.number_of_states; ++t) { // Rows: time steps
+        for (int s = 0; s < model.number_of_states; ++s) { // Columns: states
+            std::cout << alpha[t * model.number_of_states + s] << " ";
+        }
+        std::cout << std::endl;
+    }
 }
 
 void backwards_matrices(const CupaalMarkovModel_Matrix &model) {
@@ -188,10 +196,44 @@ void backwards_matrices(const CupaalMarkovModel_Matrix &model) {
     }
 }
 
+void print_model(const CupaalMarkovModel_Matrix &model) {
+    std::cout << "Model Details:" << std::endl;
+
+    // Print number of states
+    std::cout << "Number of States: " << model.number_of_states << std::endl;
+
+    // Print Initial Distribution Vector
+    std::cout << "Initial Distribution Vector:" << std::endl;
+    for (int i = 0; i < model.number_of_states; i++) {
+        std::cout << model.initial_distribution_vector[i] << " ";
+    }
+    std::cout << std::endl;
+
+    // Print Transition Matrix
+    std::cout << "Transition Matrix:" << std::endl;
+    for (int i = 0; i < model.number_of_states; ++i) {
+        for (int j = 0; j < model.number_of_states; ++j) {
+            std::cout << model.transition_matrix[i * model.number_of_states + j] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    // Print Labelling Matrix
+    std::cout << "Labelling Matrix:" << std::endl;
+    for (int l = 0; l < model.labels.size(); ++l) { // Time steps or rows
+        for (int s = 0; s < model.number_of_states; ++s) { // States or columns
+            std::cout << model.labelling_matrix[s * model.labels.size() + l] << " ";
+        }
+        std::cout << std::endl;
+    }
+
+    std::cout << "----------------------------------------" << std::endl;
+}
 
 void baum_welch(const CupaalMarkovModel_Matrix &model, int seed=0) {
     // Initialize pi, P, and omega (based on observations)
     initialize_model_parameters(model, seed);
+    print_model(model);
     forwards_matrices(model);
 }
 
@@ -200,7 +242,17 @@ int main(int argc, char *argv[]) {
     storm::settings::initializeAll("CuPAAL", "CuPAAL");
     DdManager *gbm = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
 
-    baum_welch( model);
+    CupaalMarkovModel_Matrix model;
+    model.states = {1, 2};
+    model.labels = {"Hungry", "Full"};
+    model.observations = {{"Hungry", "Full", "Hungry", "Hungry", "Full", "Full"}};
+    model.number_of_states = model.states.size();
+    model.number_of_observations = model.observations.size();
+    model.transition_matrix = new probability[100];
+    model.labelling_matrix = new probability[100];
+    model.initial_distribution_vector = new probability[100];
+
+    baum_welch(model, 10);
 
     // states = {"a", "b"} = {1, 2}
     // labels = {"hungry", "full"}
