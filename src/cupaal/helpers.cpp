@@ -36,10 +36,10 @@ std::vector<double> cupaal::generate_stochastic_probabilities(const unsigned lon
 
     // normalize
     double sum = 0.0;
-    for (const auto probability : probabilities) {
+    for (const auto probability: probabilities) {
         sum += probability;
     }
-    for (double& p : probabilities) {
+    for (double &p: probabilities) {
         p /= sum;
     }
 
@@ -77,7 +77,7 @@ std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD> > cupaal
  * @sideeffect None
  * @see storm::api::parseProgram, storm::api::buildSymbolicModel
 */
-std::shared_ptr<storm::models::sparse::Model<double >> cupaal::parseAndBuildPrismSparse(
+std::shared_ptr<storm::models::sparse::Model<double> > cupaal::parseAndBuildPrismSparse(
     std::string const &filename) {
     const auto program = storm::api::parseProgram(filename, true);
     constexpr std::vector<std::shared_ptr<storm::logic::Formula const> > formulas;

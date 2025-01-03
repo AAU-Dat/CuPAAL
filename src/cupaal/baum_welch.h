@@ -25,12 +25,16 @@ namespace cupaal {
         probability *omega_matrix; // omega
 
         void initialize_model_parameters_randomly(int seed = 0);
+
         void print_model_parameters() const;
+
         void calculate_omega();
     };
 
     extern std::vector<probability> forward_matrix(const MarkovModel_Matrix &model);
+
     extern std::vector<probability> backward_matrix(const MarkovModel_Matrix &model);
+
     extern MarkovModel_Matrix baum_welch_matrix(const MarkovModel_Matrix &model);
 
     extern DdNode **forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *pi, DdNode **row_vars,
