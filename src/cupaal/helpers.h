@@ -13,6 +13,8 @@ namespace cupaal {
 
     extern std::vector<double> generate_stochastic_probabilities(unsigned long size, int seed = 0);
 
+    extern std::vector<double> generate_stochastic_probabilities(unsigned long size, std::mt19937 generator);
+
     extern void write_dd_to_dot(DdManager *manager, DdNode *dd, const char *filename);
 
     extern std::shared_ptr<storm::models::symbolic::Model<storm::dd::DdType::CUDD> > parseAndBuildPrism(

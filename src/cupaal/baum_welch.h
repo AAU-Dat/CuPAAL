@@ -31,6 +31,26 @@ namespace cupaal {
         void calculate_omega();
     };
 
+    class MarkovModel_ADD {
+    public:
+        DdManager *manager;
+        bool print_calculations = false;
+        std::set<state> states;
+        std::vector<label> labels;
+        std::map<label, state> label_index_map;
+        std::vector<std::vector<label> > observations;
+        DdNode *labelling_add; // labelling add
+        DdNode *transition_add; // P
+        DdNode *initial_distribution_add; // pi
+        DdNode **omega_add; // omega
+
+        void initialize_model_parameters_randomly(std::mt19937 generator);
+
+        void print_model_parameters() const;
+
+        void calculate_omega();
+    };
+
     extern std::vector<probability> forward_matrix(const MarkovModel_Matrix &model);
 
     extern std::vector<probability> backward_matrix(const MarkovModel_Matrix &model);

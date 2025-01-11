@@ -1,6 +1,11 @@
 #include "baum_welch.h"
+#include "cudd_extensions.h"
 #include "helpers.h"
 
+#define ROW_VAR_INDEX_OFFSET 0
+#define ROW_VAR_INDEX_MULTIPLIER 2
+#define COL_VAR_INDEX_OFFSET 1
+#define COL_VAR_INDEX_MULTIPLIER 2
 
 void cupaal::MarkovModel_Matrix::initialize_model_parameters_randomly(const int seed) {
     auto index = 0;
@@ -103,6 +108,80 @@ void cupaal::MarkovModel_Matrix::calculate_omega() {
     }
 }
 
+void cupaal::MarkovModel_ADD::initialize_model_parameters_randomly(std::mt19937 generator) {
+    auto index = 0;
+    for (const auto &label: labels) {
+        label_index_map[label] = index;
+        index++;
+    }
+
+    auto initial_distribution_vector = static_cast<probability *>(safe_malloc(
+        sizeof(probability), states.size()));
+
+    auto transition_matrix = static_cast<probability *>(safe_malloc(
+        sizeof(probability), states.size() * states.size()));
+
+    auto labelling_matrix = static_cast<probability *>(safe_malloc(
+        sizeof(probability), states.size() * labels.size()));
+
+    const std::vector<double> initial_distribution = generate_stochastic_probabilities(
+        states.size(), generator);
+
+    for (int s = 0; s < states.size(); s++) {
+        initial_distribution_vector[s] = initial_distribution[s];
+    }
+
+    for (int s = 0; s < states.size(); s++) {
+        std::vector<double> transition_probabilities = generate_stochastic_probabilities(
+            states.size(), generator);
+        for (int s_prime = 0; s_prime < states.size(); s_prime++) {
+            transition_matrix[s * states.size() + s_prime] = transition_probabilities[s_prime];
+        }
+    }
+
+    for (int s = 0; s < states.size(); s++) {
+        std::vector<double> labelling_probabilities = generate_stochastic_probabilities(
+            labels.size(), generator);
+        for (int l = 0; l < labels.size(); l++) {
+            labelling_matrix[s * labels.size() + l] = labelling_probabilities[l];
+        }
+    }
+    if (!observations.empty() && labelling_matrix != nullptr) {
+        calculate_omega();
+    }
+
+    int dump_n_rows = states.size();
+    int dump_n_cols = states.size();
+    int n_row_vars = 0;
+    int n_col_vars = 0;
+    int n_vars = ceil(log2(states.size()));
+    auto row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode*), n_vars));
+    auto col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode*), n_vars));
+    auto comp_row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode*), n_vars));
+    auto comp_col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode*), n_vars));
+
+    Sudd_addRead(initial_distribution_vector, states.size(), states.size(), manager, &initial_distribution_add, &row_vars,
+        &col_vars,
+        &comp_row_vars,
+        &comp_col_vars,
+        &n_row_vars,
+        &n_col_vars,
+        &dump_n_rows,
+        &dump_n_cols,
+        ROW_VAR_INDEX_OFFSET,
+        ROW_VAR_INDEX_MULTIPLIER,
+        COL_VAR_INDEX_OFFSET,
+        COL_VAR_INDEX_MULTIPLIER);
+}
+
+void cupaal::MarkovModel_ADD::print_model_parameters() const {
+    std::cout << "Model Details:" << std::endl;
+    std::cout << "Number of States: " << states.size() << std::endl;
+}
+
+void cupaal::MarkovModel_ADD::calculate_omega() {
+    }
+
 std::vector<probability> cupaal::forward_matrix(const MarkovModel_Matrix &model) {
     const unsigned long number_of_states = model.states.size();
     // Allocate alpha
@@ -175,6 +254,8 @@ cupaal::MarkovModel_Matrix cupaal::baum_welch_matrix(const MarkovModel_Matrix &m
 
     return model;
 }
+
+
 
 DdNode **cupaal::forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *pi, DdNode **row_vars,
                          DdNode **column_vars, const int n_vars, const int n_obs) {

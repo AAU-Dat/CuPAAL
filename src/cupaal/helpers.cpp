@@ -44,7 +44,27 @@ std::vector<double> cupaal::generate_stochastic_probabilities(const unsigned lon
     }
 
     return probabilities;
-};
+}
+
+std::vector<double> cupaal::generate_stochastic_probabilities(const unsigned long size, std::mt19937 generator) {
+    std::vector<double> probabilities(size);
+    std::uniform_real_distribution<> distribution(0.01, 0.99);
+
+    for (int i = 0; i < size; ++i) {
+        probabilities[i] = distribution(generator);
+    }
+
+    // normalize
+    double sum = 0.0;
+    for (const auto probability: probabilities) {
+        sum += probability;
+    }
+    for (double &p: probabilities) {
+        p /= sum;
+    }
+
+    return probabilities;
+}
 
 
 /**
