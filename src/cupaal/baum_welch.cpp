@@ -147,9 +147,68 @@ std::vector<probability> cupaal::backward_matrix(const MarkovModel_Matrix &model
     return beta;
 }
 
+std::vector<probability> cupaal::gamma_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta) {
+    const unsigned long number_of_states = model.states.size();
+    const unsigned long number_of_obs = model.observations[0].size();
+
+    // Allocate gamma
+    std::vector<double> gamma(number_of_states * number_of_obs, 0.0);
+
+    for (unsigned long t = 0; t < number_of_obs; t++) {
+        double normalization = 0.0;
+
+        // Compute normalization factor for time t
+        for (unsigned long s = 0; s < number_of_states; s++) {
+            normalization += alpha[t * number_of_states + s] * beta[t * number_of_states + s];
+        }
+
+        // Compute gamma values for time t
+        for (unsigned long s = 0; s < number_of_states; s++) {
+            gamma[t * number_of_states + s] =
+                (alpha[t * number_of_states + s] * beta[t * number_of_states + s]) / normalization;
+        }
+    }
+    return gamma;
+}
+
+std::vector<probability> cupaal::xi_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta) {
+    const unsigned long number_of_states = model.states.size();
+    const unsigned long number_of_obs = model.observations[0].size();
+
+    std::vector<double> xi(number_of_states * number_of_states * (number_of_obs - 1), 0.0);
+    for (unsigned long t = 0; t < number_of_obs - 1; t++) {
+        double normalization = 0.0;
+
+        // Compute normalization factor for time t
+        for (unsigned long i = 0; i < number_of_states; i++) {
+            for (unsigned long j = 0; j < number_of_states; j++) {
+                normalization += alpha[t * number_of_states + i] *
+                                 model.transition_matrix[i * number_of_states + j] *
+                                 model.omega_matrix[(t + 1) * number_of_states + j] *
+                                 beta[(t + 1) * number_of_states + j];
+            }
+        }
+
+        // Compute xi values for time t
+        for (unsigned long i = 0; i < number_of_states; i++) {
+            for (unsigned long j = 0; j < number_of_states; j++) {
+                xi[t * number_of_states * number_of_states + i * number_of_states + j] =
+                    (alpha[t * number_of_states + i] *
+                     model.transition_matrix[i * number_of_states + j] *
+                     model.omega_matrix[(t + 1) * number_of_states + j] *
+                     beta[(t + 1) * number_of_states + j]) / normalization;
+            }
+        }
+    }
+
+    return xi;
+}
+
 cupaal::MarkovModel_Matrix cupaal::baum_welch_matrix(const MarkovModel_Matrix &model) {
     const auto alpha = forward_matrix(model);
     const auto beta = backward_matrix(model);
+    const auto gamma = gamma_matrix(model, alpha, beta);
+    const auto xi = xi_matrix(model, alpha, beta);
 
     if (model.print_calculations) {
         std::cout << "Alpha Matrix:" << std::endl;
@@ -168,6 +227,30 @@ cupaal::MarkovModel_Matrix cupaal::baum_welch_matrix(const MarkovModel_Matrix &m
             for (int s = 0; s < model.states.size(); s++) {
                 // Columns: states
                 std::cout << beta[t * model.states.size() + s] << " ";
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << "Gamma Matrix:" << std::endl;
+        for (int t = 0; t < model.observations[0].size(); t++) {
+            // Rows: time steps
+            for (int s = 0; s < model.states.size(); s++) {
+                // Columns: states
+                std::cout << gamma[t * model.states.size() + s] << " ";
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << "Xi Matrix:" << std::endl;
+        for (int t = 0; t < model.observations[0].size() - 1; t++) {
+            std::cout << "Time step " << t << ":" << std::endl;
+            for (int i = 0; i < model.states.size(); i++) {
+                // Rows: current state
+                for (int j = 0; j < model.states.size(); j++) {
+                    // Columns: next state
+                    std::cout << xi[t * model.states.size() * model.states.size() + i * model.states.size() + j] << " ";
+                }
+                std::cout << std::endl;
             }
             std::cout << std::endl;
         }
