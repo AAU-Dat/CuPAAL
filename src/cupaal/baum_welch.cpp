@@ -40,9 +40,6 @@ void cupaal::MarkovModel_Matrix::initialize_model_parameters_randomly(const int 
             labelling_matrix[s * labels.size() + l] = labelling_probabilities[l];
         }
     }
-    if (!observations.empty() && labelling_matrix != nullptr) {
-        calculate_omega();
-    }
 }
 
 void cupaal::MarkovModel_Matrix::print_model_parameters() const {
@@ -73,81 +70,63 @@ void cupaal::MarkovModel_Matrix::print_model_parameters() const {
         }
         std::cout << std::endl;
     }
-
-    std::cout << "Omega Matrix:" << std::endl;
-    for (int s = 0; s < states.size(); s++) {
-        for (int l = 0; l < observations[0].size(); l++) {
-            std::cout << omega_matrix[s * observations[0].size() + l] << " ";
-        }
-        std::cout << std::endl;
-    }
-}
-
-void cupaal::MarkovModel_Matrix::calculate_omega() {
-    if (observations.empty()) {
-        std::cout << "You should supply some observations before trying to calculate omega." << std::endl;
-        return;
-    }
-
-    omega_matrix = static_cast<probability *>(safe_malloc(
-        sizeof(probability), states.size() * observations[0].size()));
-
-    for (const auto &trace: observations) {
-        for (int s = 0; s < states.size(); s++) {
-            for (int l = 0; l < observations[0].size(); l++) {
-                const auto label = trace[l];
-                const auto label_index = label_index_map[label];
-                omega_matrix[s * observations[0].size() + l] = labelling_matrix[label_index + s * labels.size()];
-            }
-        }
-    }
 }
 
 std::vector<probability> cupaal::forward_matrix(const MarkovModel_Matrix &model) {
     const unsigned long number_of_states = model.states.size();
     // Allocate alpha
-    std::vector alpha((number_of_states + 1) * model.observations[0].size(), 0.0);
+    std::vector alpha(number_of_states * model.observations[0].size(), 0.0);
 
     // Base case: t = 0
-    for (int t = 0; t < number_of_states; t++) {
-        alpha[t] = model.initial_distribution_vector[t];
+    for (int s = 0; s < number_of_states; s++) {
+        alpha[s] = model.initial_distribution_vector[s] *
+                   model.labelling_matrix[s * model.labels.size() + model.label_index_map.at(model.observations[0][0])];
     }
 
     // Case: 0 < t <= n_obs
-    for (int t = 0; t < model.observations[0].size(); t++) {
+    for (int t = 1; t < model.observations[0].size(); t++) {
         for (int s = 0; s < number_of_states; s++) {
-            double temp = 0.0;
-            for (int ss = 0; ss < number_of_states; ss++) {
-                temp += model.transition_matrix[ss * number_of_states + s] * model.omega_matrix[
-                    t * number_of_states + ss] * alpha[t * number_of_states + ss];
+            double temporary_sum = 0;
+            for (int s_prime = 0; s_prime < number_of_states; s_prime++) {
+                temporary_sum += alpha[(t - 1) * number_of_states + s_prime] * model.transition_matrix[
+                    s_prime * number_of_states + s];
             }
-            alpha[(t + 1) * number_of_states + s] = temp;
+            alpha[t * number_of_states + s] = model.labelling_matrix[
+                                                  s * model.labels.size() + model.label_index_map.at(
+                                                      model.observations[0][t])] * temporary_sum;
         }
     }
 
     return alpha;
 }
 
+
 std::vector<probability> cupaal::backward_matrix(const MarkovModel_Matrix &model) {
     const unsigned long number_of_states = model.states.size();
     // Allocate beta + Base case: t = n_obs
-    std::vector beta((number_of_states + 1) * model.observations[0].size(), 1.0);
+    std::vector beta(number_of_states * model.observations[0].size(), 1.0);
 
     // Case: 0 <= t < n_obs
-    for (unsigned long t = model.observations[0].size(); t > 0; t--) {
+    for (int t = model.observations[0].size() - 2; t >= 0; t--) {
         for (int s = 0; s < number_of_states; s++) {
-            double temp = 0.0;
-            for (int ss = 0; ss < number_of_states; ss++) {
-                temp += beta[t * number_of_states + ss] * model.transition_matrix[s * number_of_states + ss];
+            double temporary_sum = 0.0;
+            for (int s_prime = 0; s_prime < number_of_states; s_prime++) {
+                // auto label_result = model.labelling_matrix[s_prime * model.labels.size() + model.label_index_map.at(model.observations[0][t])];
+                temporary_sum += beta[(t + 1) * number_of_states + s_prime] *
+                        model.transition_matrix[s * number_of_states + s_prime] *
+                        model.labelling_matrix[s_prime * model.labels.size() + model.label_index_map.at(
+                                                   model.observations[0][t + 1])];
             }
-            beta[(t - 1) * number_of_states + s] = model.omega_matrix[(t - 1) * number_of_states + s] * temp;
+            // beta[(t - 1) * number_of_states + s] = model.omega_matrix[(t - 1) * number_of_states + s] * temp;
+            beta[t * number_of_states + s] = temporary_sum;
         }
     }
 
     return beta;
 }
 
-std::vector<probability> cupaal::gamma_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta) {
+std::vector<probability> cupaal::gamma_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha,
+                                              const std::vector<probability> &beta) {
     const unsigned long number_of_states = model.states.size();
     const unsigned long number_of_obs = model.observations[0].size();
 
@@ -165,43 +144,92 @@ std::vector<probability> cupaal::gamma_matrix(const MarkovModel_Matrix &model, c
         // Compute gamma values for time t
         for (unsigned long s = 0; s < number_of_states; s++) {
             gamma[t * number_of_states + s] =
-                (alpha[t * number_of_states + s] * beta[t * number_of_states + s]) / normalization;
+                    (alpha[t * number_of_states + s] * beta[t * number_of_states + s]) / normalization;
         }
     }
     return gamma;
 }
 
-std::vector<probability> cupaal::xi_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta) {
+std::vector<probability> cupaal::xi_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha,
+                                           const std::vector<probability> &beta) {
     const unsigned long number_of_states = model.states.size();
     const unsigned long number_of_obs = model.observations[0].size();
-
     std::vector<double> xi(number_of_states * number_of_states * (number_of_obs - 1), 0.0);
-    for (unsigned long t = 0; t < number_of_obs - 1; t++) {
+
+    for (unsigned long t = 0; t < (number_of_obs - 1); t++) {
         double normalization = 0.0;
 
         // Compute normalization factor for time t
         for (unsigned long i = 0; i < number_of_states; i++) {
             for (unsigned long j = 0; j < number_of_states; j++) {
-                normalization += alpha[t * number_of_states + i] *
-                                 model.transition_matrix[i * number_of_states + j] *
-                                 model.omega_matrix[(t + 1) * number_of_states + j] *
-                                 beta[(t + 1) * number_of_states + j];
+                xi[t * model.states.size() * model.states.size() + i * model.states.size() + j] =
+                    alpha[t * number_of_states + i] *
+                        model.transition_matrix[i * number_of_states + j] *
+                        model.labelling_matrix[j * model.labels.size() + model.label_index_map.at(
+                                                   model.observations[0][t + 1])] *
+                        beta[(t + 1) * number_of_states + j];
+
+                normalization += xi[t * model.states.size() * model.states.size() + i * model.states.size() + j];
             }
         }
 
         // Compute xi values for time t
         for (unsigned long i = 0; i < number_of_states; i++) {
             for (unsigned long j = 0; j < number_of_states; j++) {
-                xi[t * number_of_states * number_of_states + i * number_of_states + j] =
-                    (alpha[t * number_of_states + i] *
-                     model.transition_matrix[i * number_of_states + j] *
-                     model.omega_matrix[(t + 1) * number_of_states + j] *
-                     beta[(t + 1) * number_of_states + j]) / normalization;
+                xi[t * model.states.size() * model.states.size() + i * model.states.size() + j] /= normalization;
             }
         }
     }
 
     return xi;
+}
+
+void cupaal::update_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta) {
+    const unsigned long number_of_states = model.states.size();
+    const unsigned long number_of_obs = model.observations[0].size();
+    const auto gamma = gamma_matrix(model, alpha, beta);
+    const auto xi = xi_matrix(model, alpha, beta);
+
+    // Update initial distribution
+    for (unsigned long s = 0; s < number_of_states; s++) {
+        model.initial_distribution_vector[s] = gamma[s]; //maybe add observation size
+    }
+
+    // Update trasition matrix
+    for (unsigned long i = 0; i < number_of_states; i++) {
+        for (unsigned long j = 0; j < number_of_states; j++) {
+            double numerator = 0.0;
+            double denominator = 0.0;
+
+            // Compute the numerator and denominator for transition probabilities
+            for (unsigned long t = 0; t < number_of_obs - 1; t++) {
+                numerator += xi[t * number_of_states * number_of_states + i * number_of_states + j];
+                denominator += gamma[t * number_of_states + i];
+            }
+
+            model.transition_matrix[i * number_of_states + j] = numerator / denominator;
+        }
+    }
+
+    // Update emission matrix
+    for (unsigned long s = 0; s < number_of_states; s++) {
+        for (unsigned long l = 0; l < model.labels.size(); l++) {
+            double numerator = 0.0;
+            double denominator = 0.0;
+
+            // Compute the numerator and denominator for emission probabilities
+            for (unsigned long t = 0; t < number_of_obs; t++) {
+                // in case of multiple sequences of observations, change model.observations
+                if (model.observations[0][t] == model.labels[l]) { // Match observation
+                    numerator += gamma[t * number_of_states + s];
+                }
+                denominator += gamma[t * number_of_states + s];
+            }
+
+            model.labelling_matrix[s * model.labels.size() + l] = numerator / denominator;
+
+        }
+    }
 }
 
 cupaal::MarkovModel_Matrix cupaal::baum_welch_matrix(const MarkovModel_Matrix &model) {
@@ -255,7 +283,7 @@ cupaal::MarkovModel_Matrix cupaal::baum_welch_matrix(const MarkovModel_Matrix &m
             std::cout << std::endl;
         }
     }
-
+    update_matrix(model, alpha, beta);
     return model;
 }
 
