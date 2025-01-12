@@ -22,7 +22,6 @@ namespace cupaal {
         probability *labelling_matrix; // labelling matrix
         probability *transition_matrix; // P
         probability *initial_distribution_vector; // pi
-        probability *omega_matrix; // omega
 
         void initialize_model_parameters_randomly(int seed = 0);
 
@@ -38,6 +37,7 @@ namespace cupaal {
     extern std::vector<probability> gamma_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta);
 
     extern std::vector<probability> xi_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta);
+    extern void update_matrix(const MarkovModel_Matrix &model, const std::vector<probability> &alpha, const std::vector<probability> &beta);
 
     extern MarkovModel_Matrix baum_welch_matrix(const MarkovModel_Matrix &model);
 
