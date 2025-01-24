@@ -453,7 +453,7 @@ void cupaal::MarkovModel_ADD::update_model_parameters_add(DdNode **gamma, DdNode
 
     // Update labelling
     for (int l = 0; l < labels.size(); l++) {
-        labelling_add[l] = Cudd_Zero(manager);
+        labelling_add[l] = Cudd_ReadZero(manager);
     }
     for (int t = 0; t < observations[0].size(); t++) {
         labelling_add[label_index_map.at(observations[0][t])] = Cudd_addApply(
@@ -637,6 +637,7 @@ cupaal::MarkovModel_Matrix cupaal::baum_welch_matrix(const MarkovModel_Matrix &m
 DdNode **cupaal::forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *pi, DdNode **row_vars,
                          DdNode **column_vars, const int n_vars, const int n_obs) {
     const auto alpha = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_obs + 1));
+    auto result = Cudd_ReadZero(manager);
     alpha[0] = pi;
     for (int t = 1; t <= n_obs; t++) {
         DdNode *alpha_temp_0 = Cudd_addApply(manager, Cudd_addTimes, omega[t - 1], alpha[t - 1]);
