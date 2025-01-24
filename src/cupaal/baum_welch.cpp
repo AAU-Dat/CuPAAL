@@ -439,10 +439,10 @@ DdNode **cupaal::MarkovModel_ADD::xi_add(DdNode **alpha, DdNode **beta) const {
 
 void cupaal::MarkovModel_ADD::update_model_parameters_add(DdNode **gamma, DdNode **xi) {
     DdNode *temporary_gamma_sum = gamma[0];
-    DdNode *temporary_xi_sum = xi[0];
-    for (int t = 1; t < observations[0].size() - 1; t++) {
+    DdNode *temporary_xi_sum = Cudd_ReadZero(manager);
+    for (int t = 1; t < observations[0].size(); t++) {
         temporary_gamma_sum = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum, gamma[t]);
-        temporary_xi_sum = Cudd_addApply(manager, Cudd_addPlus, temporary_xi_sum, xi[t]);
+        temporary_xi_sum = Cudd_addApply(manager, Cudd_addPlus, temporary_xi_sum, xi[t - 1]);
     }
     // Update transitions
     Cudd_PrintDebug(manager, temporary_gamma_sum, 4, 2);
