@@ -3,6 +3,10 @@
 #include <util.h>
 #include <cuddInt.h>
 
+DdNode * cupaal::Cudd_Zero(DdManager *dd) {
+    return DD_ZERO(dd);
+}
+
 /**
  * @brief Natural exponent of f an %ADD.
  * @return nullptr if not a terminal case; exp(f) otherwise.
@@ -36,19 +40,15 @@ CUDD_VALUE_TYPE cupaal::log_add(CUDD_VALUE_TYPE x, CUDD_VALUE_TYPE y) {
  *  @sideeffect None
  *  @see Cudd_addApply
 */
-DdNode *
-cupaal::Cudd_addLogPlus(
-    DdManager *dd,
-    DdNode **f,
-    DdNode **g) {
+DdNode *cupaal::Cudd_addLogPlus(DdManager *dd, DdNode **f, DdNode **g) {
     DdNode *res;
     DdNode *F, *G;
     CUDD_VALUE_TYPE value;
 
     F = *f;
     G = *g;
-    if (F == DD_MINUS_INFINITY(dd)) return(G);
-    if (G == DD_MINUS_INFINITY(dd)) return(F);
+    if (F == DD_MINUS_INFINITY(dd)) return (G);
+    if (G == DD_MINUS_INFINITY(dd)) return (F);
     if (cuddIsConstant(F) && cuddIsConstant(G)) {
         value = log_add(cuddV(F), cuddV(G));
         res = cuddUniqueConst(dd, value);
@@ -91,12 +91,7 @@ DdNode *cupaal::Cudd_addLogMatrixMultiply(DdManager *dd, DdNode *A, DdNode *B, D
 
 
 DdNode *
-cupaal::addLogMMRecur(
-    DdManager *dd,
-    DdNode *A,
-    DdNode *B,
-    int topP,
-    int *vars) {
+cupaal::addLogMMRecur(DdManager *dd, DdNode *A, DdNode *B, int topP, int *vars) {
     DdNode *zero,
             *At, /* positive cofactor of first operand */
             *Ae, /* negative cofactor of first operand */
@@ -290,7 +285,8 @@ cupaal::addLogMMRecur(
     return (res);
 } /* end of addLogMMRecur */
 
-int cupaal::Sudd_addRead(
+int cupaal::Sudd_addRead
+(
     CUDD_VALUE_TYPE *array,
     ssize_t array_n_rows,
     ssize_t array_n_cols,
