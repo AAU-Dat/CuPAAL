@@ -3,6 +3,10 @@
 #include <util.h>
 #include <cuddInt.h>
 
+DdNode * cupaal::Cudd_Zero(DdManager *dd) {
+    return DD_ZERO(dd);
+}
+
 /**
  * @brief Natural exponent of f an %ADD.
  * @return nullptr if not a terminal case; exp(f) otherwise.

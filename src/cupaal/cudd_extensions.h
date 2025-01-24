@@ -3,6 +3,8 @@
 #include <cuddObj.hh>
 
 namespace cupaal {
+    extern DdNode *Cudd_Zero(DdManager *dd);
+
     extern DdNode *Cudd_addExp(DdManager *dd, DdNode *f);
 
     extern DdNode *Cudd_addLogMatrixMultiply(DdManager *dd, DdNode *A, DdNode *B, DdNode **z, int nz);
