@@ -328,24 +328,24 @@ void cupaal::MarkovModel_ADD::initialize_model_parameters_randomly(std::mt19937 
 
     for (int l = 0; l < labels.size(); l++) {
         Sudd_addRead(
-        &labelling_matrix[l * states.size()],
-        states.size(),
-        1,
-        manager,
-        &labelling_add[l],
-        &row_vars,
-        &col_vars,
-        &comp_row_vars,
-        &comp_col_vars,
-        &n_row_vars,
-        &n_col_vars,
-        &dump_n_rows,
-        &dump_n_cols,
-        ROW_VAR_INDEX_OFFSET,
-        ROW_VAR_INDEX_MULTIPLIER,
-        COL_VAR_INDEX_OFFSET,
-        COL_VAR_INDEX_MULTIPLIER
-    );
+            &labelling_matrix[l * states.size()],
+            states.size(),
+            1,
+            manager,
+            &labelling_add[l],
+            &row_vars,
+            &col_vars,
+            &comp_row_vars,
+            &comp_col_vars,
+            &n_row_vars,
+            &n_col_vars,
+            &dump_n_rows,
+            &dump_n_cols,
+            ROW_VAR_INDEX_OFFSET,
+            ROW_VAR_INDEX_MULTIPLIER,
+            COL_VAR_INDEX_OFFSET,
+            COL_VAR_INDEX_MULTIPLIER
+        );
     }
 }
 
@@ -462,20 +462,16 @@ DdNode **cupaal::MarkovModel_ADD::xi_add(DdNode **alpha, DdNode **beta) const {
 }
 
 void cupaal::MarkovModel_ADD::update_model_parameters_add(DdNode **gamma, DdNode **xi) {
-    if (!gamma) {
-        return;
-    }
+    if (!gamma) { return; }
     DdNode *temporary_gamma_sum = gamma[0];
     DdNode *temporary_xi_sum = Cudd_ReadZero(manager);
     for (int t = 1; t < observations[0].size(); t++) {
         temporary_gamma_sum = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum, gamma[t]);
         temporary_xi_sum = Cudd_addApply(manager, Cudd_addPlus, temporary_xi_sum, xi[t - 1]);
     }
-
     // Update transitions
     transition_add = Cudd_addApply(manager, Cudd_addDivide, temporary_xi_sum, temporary_gamma_sum);
     Cudd_Ref(transition_add);
-
     // Update labelling
     for (int l = 0; l < labels.size(); l++) {
         labelling_add[l] = Cudd_ReadZero(manager);
@@ -488,7 +484,6 @@ void cupaal::MarkovModel_ADD::update_model_parameters_add(DdNode **gamma, DdNode
         labelling_add[l] = Cudd_addApply(manager, Cudd_addDivide, labelling_add[l], temporary_gamma_sum);
         Cudd_Ref(labelling_add[l]);
     }
-
     // Update initial distribution
     initial_distribution_add = gamma[0];
     Cudd_Ref(gamma[0]);
