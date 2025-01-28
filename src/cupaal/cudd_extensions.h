@@ -5,6 +5,8 @@
 namespace cupaal {
     extern DdNode *Cudd_addExp(DdManager *dd, DdNode *f);
 
+    extern DdNode *addLog(DdManager *dd, DdNode *f);
+
     extern DdNode *Cudd_addLogMatrixMultiply(DdManager *dd, DdNode *A, DdNode *B, DdNode **z, int nz);
 
     extern CUDD_VALUE_TYPE log_add(CUDD_VALUE_TYPE x, CUDD_VALUE_TYPE y);

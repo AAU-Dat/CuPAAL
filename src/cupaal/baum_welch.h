@@ -12,6 +12,13 @@ using label = std::string;
 
 // This file should contain all the functions related to the Baum-Welch algorithm: forward-backward, update-parameter-estimates, etc.
 namespace cupaal {
+    struct report {
+        unsigned int iterations;
+        unsigned long microseconds;
+        CUDD_VALUE_TYPE log_likelihood;
+    };
+
+
     class MarkovModel_Matrix {
     public:
         bool print_calculations = false;
@@ -42,6 +49,7 @@ namespace cupaal {
         DdNode *transition_add; // P
         DdNode *initial_distribution_add; // pi
         DdNode **labelling_add; // labelling add
+        DdNode *row_cube;
 
         void initialize_probabilities(probability *transition_function, probability *labelling_function,
                                       probability *initial_distribution);
@@ -61,6 +69,8 @@ namespace cupaal {
         [[nodiscard]] DdNode **xi_add(DdNode **alpha, DdNode **beta) const;
 
         void update_model_parameters_add(DdNode **gamma, DdNode **xi);
+
+        report baum_welch_add(unsigned int max_iterations = 100);
 
     private:
         int dump_n_rows = 0;

@@ -18,6 +18,24 @@ DdNode *cupaal::Cudd_addExp(DdManager *dd, DdNode *f) {
     return nullptr;
 } /* end of Cudd_addExp */
 
+/**
+ * @brief Special log f an %ADD. Used for summing over abstraction, avoiding negative infinities.
+ * @return nullptr if not a terminal case; f if f is the 0 constant, exp(f) otherwise.
+ * @sideeffect None
+ * @see Cudd_addMonadicApply
+*/
+DdNode *cupaal::addLog(DdManager *dd, DdNode *f) {
+    if (cuddIsConstant(f)) {
+        const CUDD_VALUE_TYPE value = log(cuddV(f));
+        if (value == -std::numeric_limits<double>::infinity()) {
+            return f;
+        }
+        DdNode *res = cuddUniqueConst(dd, value);
+        return (res);
+    }
+    return nullptr;
+}
+
 CUDD_VALUE_TYPE cupaal::log_add(CUDD_VALUE_TYPE x, CUDD_VALUE_TYPE y) {
     if (y > x) {
         CUDD_VALUE_TYPE temp = x;
