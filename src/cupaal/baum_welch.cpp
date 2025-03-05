@@ -1,5 +1,7 @@
 #include <filesystem>
+#include <fstream>
 #include <chrono>
+#include <ranges>
 
 #include "baum_welch.h"
 #include "cudd_extensions.h"
@@ -9,6 +11,276 @@
 #define ROW_VAR_INDEX_MULTIPLIER 2
 #define COL_VAR_INDEX_OFFSET 1
 #define COL_VAR_INDEX_MULTIPLIER 2
+
+const std::set<std::string> MODEL_ELEMENTS = {"states", "labels", "initial", "transitions", "emissions"};
+
+void cupaal::MarkovModel_HMM::baum_welch(unsigned int max_iterations) {
+    unsigned int current_iteration = 1;
+    double epsilon = Cudd_ReadEpsilon(manager);
+
+    while (current_iteration <= max_iterations) {
+        const auto alpha = forward();
+        std::cout << "hello" << std::endl;
+        current_iteration++;
+        Cudd_RecursiveDeref(manager, alpha[0]);
+        Cudd_RecursiveDeref(manager, alpha[1]);
+        Cudd_RecursiveDeref(manager, alpha[2]);
+        Cudd_RecursiveDeref(manager, alpha[3]);
+        Cudd_RecursiveDeref(manager, alpha[4]);
+        Cudd_RecursiveDeref(manager, alpha[5]);
+        Cudd_RecursiveDeref(manager, alpha[6]);
+        Cudd_RecursiveDeref(manager, alpha[7]);
+        free(alpha);
+    }
+    // double previous_log_likelihood = -std::numeric_limits<double>::infinity();
+    // double current_log_likelihood = -std::numeric_limits<double>::infinity();
+    //
+    // std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    // while (current_iteration <= max_iterations && !(current_log_likelihood - previous_log_likelihood < epsilon)) {
+    //     previous_log_likelihood = current_log_likelihood;
+    //     const auto alpha = forward_add();
+    //     const auto beta = backward_add();
+    //     const auto gamma = gamma_add(alpha, beta);
+    //     const auto xi = xi_add(alpha, beta);
+    //     update_model_parameters_add(gamma, xi);
+    //     const auto logs = Cudd_addMonadicApply(manager, addLog, alpha[observations[0].size() - 1]);
+    //     Cudd_Ref(logs);
+    //     const auto log_likelihood = Cudd_addExistAbstract(manager, logs, row_cube);
+    //     Cudd_Ref(log_likelihood);
+    //     current_log_likelihood = Cudd_V(log_likelihood);
+    //     Cudd_RecursiveDeref(manager, logs);
+    //     Cudd_RecursiveDeref(manager, log_likelihood);
+    //
+    //     current_iteration++;
+    // }
+    // std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    //
+    // report.iterations = current_iteration - 1;
+    // report.microseconds = std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+    // report.log_likelihood = current_log_likelihood;
+}
+
+DdNode ** cupaal::MarkovModel_HMM::forward() const {
+    const auto alpha = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), mapped_observations[0].size()));
+    alpha[0] = Cudd_addApply(manager, Cudd_addTimes, pi, omega[mapped_observations[0][0]]);
+    Cudd_Ref(alpha[0]);
+
+    for (int t = 1; t < mapped_observations[0].size(); t++) {
+        DdNode *alpha_temp = Cudd_addMatrixMultiply(manager, tau, alpha[t - 1], row_vars, n_vars);
+        Cudd_Ref(alpha_temp);
+        DdNode *alpha_temp2 = Cudd_addSwapVariables(manager, alpha_temp, row_vars, col_vars, n_vars);
+        Cudd_Ref(alpha_temp2);
+
+        alpha[t] = Cudd_addApply(manager, Cudd_addTimes, omega[mapped_observations[0][t]],
+                                 alpha_temp2);
+        Cudd_Ref(alpha[t]);
+        Cudd_RecursiveDeref(manager, alpha_temp);
+        Cudd_RecursiveDeref(manager, alpha_temp2);
+    }
+    return alpha;
+}
+
+void cupaal::MarkovModel_HMM::initialize_from_file(const std::string &filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return;
+    }
+
+    std::string parsing;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::string word;
+        std::stringstream line_stream(line);
+        while (std::getline(line_stream, word, ' ')) {
+            if (MODEL_ELEMENTS.contains(word)) {
+                parsing = word;
+                continue;
+            }
+            if (parsing == "states") states.push_back(word);
+            if (parsing == "labels") labels.push_back(word);
+            if (parsing == "initial") initial_distribution.push_back(stod(word));
+            if (parsing == "transitions") transitions.push_back(stod(word));
+            if (parsing == "emissions") emissions.push_back(stod(word));
+        }
+    }
+
+    number_of_states = states.size();
+    number_of_labels = labels.size();
+    dump_n_rows = number_of_states;
+    dump_n_cols = number_of_states;
+    n_row_vars = 0;
+    n_col_vars = 0;
+    n_vars = ceil(log2(number_of_states));
+    row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    comp_row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    comp_col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    omega = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), number_of_labels));
+
+    for (int i = 0; i < number_of_labels; i++) {
+        label_index_map[labels.at(i)] = i;
+    }
+
+    // read transition into ADD form
+    Sudd_addRead(
+        transitions.data(),
+        number_of_states,
+        number_of_states,
+        manager,
+        &tau,
+        &row_vars,
+        &col_vars,
+        &comp_row_vars,
+        &comp_col_vars,
+        &n_row_vars,
+        &n_col_vars,
+        &dump_n_rows,
+        &dump_n_cols,
+        ROW_VAR_INDEX_OFFSET,
+        ROW_VAR_INDEX_MULTIPLIER,
+        COL_VAR_INDEX_OFFSET,
+        COL_VAR_INDEX_MULTIPLIER
+    );
+
+    Sudd_addRead(
+        initial_distribution.data(),
+        states.size(),
+        1,
+        manager,
+        &pi,
+        &row_vars,
+        &col_vars,
+        &comp_row_vars,
+        &comp_col_vars,
+        &n_row_vars,
+        &n_col_vars,
+        &dump_n_rows,
+        &dump_n_cols,
+        ROW_VAR_INDEX_OFFSET,
+        ROW_VAR_INDEX_MULTIPLIER,
+        COL_VAR_INDEX_OFFSET,
+        COL_VAR_INDEX_MULTIPLIER);
+
+    for (int l = 0; l < number_of_labels; l++) {
+        Sudd_addRead(
+            &emissions[l * number_of_states],
+            number_of_states,
+            1,
+            manager,
+            &omega[l],
+            &row_vars,
+            &col_vars,
+            &comp_row_vars,
+            &comp_col_vars,
+            &n_row_vars,
+            &n_col_vars,
+            &dump_n_rows,
+            &dump_n_cols,
+            ROW_VAR_INDEX_OFFSET,
+            ROW_VAR_INDEX_MULTIPLIER,
+            COL_VAR_INDEX_OFFSET,
+            COL_VAR_INDEX_MULTIPLIER
+        );
+    }
+
+    auto cube_array = new int[n_vars];
+    for (int i = 0; i < n_vars; i++) {
+        cube_array[i] = 1;
+    }
+    row_cube = Cudd_addComputeCube(manager, row_vars, cube_array, n_vars);
+    Cudd_Ref(row_cube);
+    delete cube_array;
+
+    // Validate?
+    // Emissions = |S| x |L|
+    // Transitions = |S| x |S|
+    // Initial distribution = |S|
+}
+
+void cupaal::MarkovModel_HMM::add_observation(std::vector<std::string> observation) {
+    std::vector<int> mapped_observation;
+    observations.push_back(observation);
+    for (std::string s : observation) {
+        mapped_observation.push_back(label_index_map[s]);
+    }
+    mapped_observations.push_back(mapped_observation);
+}
+
+void cupaal::MarkovModel_HMM::export_to_file(const std::string &filename) {
+    std::ofstream file(filename);
+    if (!file.is_open()) {
+        return;
+    }
+
+    file << "states\n";
+    for (const auto &s: states) {
+        file << s << " ";
+    }
+    file << std::endl;
+
+    file << "labels\n";
+    for (const auto &l: labels) {
+        file << l << " ";
+    }
+    file << std::endl;
+
+    file << "initial\n";
+    for (int i = 0; i < number_of_states; i++) {
+        int assignment[n_vars];
+        for (int j = 0; j < (1 << n_vars); j++) {
+            assignment[j] = (i >> (n_vars - j - 1)) & 1;
+        }
+        file << Cudd_Eval(manager, pi, assignment) << " ";
+    }
+    file << std::endl;
+
+    file << "transitions\n";
+    for (int row = 0; row < number_of_states; row++) {
+        for (int col = 0; col < number_of_states; col++) {
+            int assignment[2 * n_vars];
+
+            for (int i = 0; i < n_vars; i++) {
+                assignment[2 * i] = (row >> (n_vars - i - 1)) & 1; // Row bits
+                assignment[2 * i + 1] = (col >> (n_vars - i - 1)) & 1; // Column bits
+            }
+            file << Cudd_Eval(manager, tau, assignment) << " ";
+        }
+        file << std::endl;
+    }
+
+    file << "emissions\n";
+    for (int row = 0; row < number_of_labels; row++) {
+        int assignment[n_vars];
+
+        // Iterate over all possible binary assignments (columns)
+        for (int col = 0; col < (1 << n_vars); col++) {
+            // Generate binary assignment
+            for (int j = 0; j < (1 << n_vars); j++) {
+                assignment[j] = (col >> (n_vars - j - 1)) & 1;
+            }
+            // Evaluate the current ADD for this column assignment
+            file << Cudd_Eval(manager, omega[row], assignment) << " ";
+        }
+        file << std::endl;
+    }
+}
+
+void cupaal::MarkovModel_HMM::clean_up_cudd() const {
+    Cudd_RecursiveDeref(manager, tau);
+    Cudd_RecursiveDeref(manager, pi);
+    Cudd_RecursiveDeref(manager, row_cube);
+
+    for (int l = 0; l < number_of_labels; l++) {
+        Cudd_RecursiveDeref(manager, omega[l]);
+    }
+
+    for (int i = 0; i < n_vars; i++) {
+        Cudd_RecursiveDeref(manager, row_vars[i]);
+        Cudd_RecursiveDeref(manager, col_vars[i]);
+        Cudd_RecursiveDeref(manager, comp_row_vars[i]);
+        Cudd_RecursiveDeref(manager, comp_col_vars[i]);
+    }
+}
 
 void cupaal::MarkovModel_Matrix::initialize_model_parameters_randomly(const int seed) {
     auto index = 0;
@@ -182,13 +454,13 @@ void cupaal::MarkovModel_ADD::initialize_probabilities(probability *transition_f
             COL_VAR_INDEX_MULTIPLIER
         );
     }
-    auto cube_array = new int[n_vars];
+    const auto cube_array = new int[n_vars];
     for (int i = 0; i < n_vars; i++) {
         cube_array[i] = 1;
     }
     row_cube = Cudd_addComputeCube(manager, row_vars, cube_array, n_vars);
     Cudd_Ref(row_cube);
-    delete cube_array;
+    delete[] cube_array;
 }
 
 void cupaal::MarkovModel_ADD::initialize_helpers() {
@@ -680,43 +952,4 @@ cupaal::MarkovModel_Matrix cupaal::baum_welch_matrix(const MarkovModel_Matrix &m
     }
 
     return model;
-}
-
-
-DdNode **cupaal::forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *pi, DdNode **row_vars,
-                         DdNode **column_vars, const int n_vars, const int n_obs) {
-    const auto alpha = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_obs + 1));
-    auto result = Cudd_ReadZero(manager);
-    alpha[0] = pi;
-    for (int t = 1; t <= n_obs; t++) {
-        DdNode *alpha_temp_0 = Cudd_addApply(manager, Cudd_addTimes, omega[t - 1], alpha[t - 1]);
-        Cudd_Ref(alpha_temp_0);
-        DdNode *alpha_temp_1 = Cudd_addMatrixMultiply(manager, P, alpha_temp_0, row_vars, n_vars);
-        Cudd_Ref(alpha_temp_1);
-        alpha[t] = Cudd_addSwapVariables(manager, alpha_temp_1, column_vars, row_vars, n_vars);
-        Cudd_Ref(alpha[t]);
-        Cudd_RecursiveDeref(manager, alpha_temp_0);
-        Cudd_RecursiveDeref(manager, alpha_temp_1);
-    }
-    return alpha;
-}
-
-DdNode **cupaal::backward(DdManager *manager, DdNode **omega, DdNode *P, DdNode **row_vars,
-                          DdNode **column_vars, const int n_vars, const int n_obs) {
-    DdNode *temporary_P = Cudd_addSwapVariables(manager, P, column_vars, row_vars, n_vars);
-    Cudd_Ref(temporary_P);
-    const auto beta = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_obs + 1));
-    beta[n_obs] = Cudd_ReadOne(manager);
-    for (int t = n_obs - 1; 0 <= t; t--) {
-        DdNode *beta_temp_0 = Cudd_addMatrixMultiply(manager, temporary_P, beta[t + 1], row_vars, n_vars);
-        Cudd_Ref(beta_temp_0);
-        DdNode *beta_temp_1 = Cudd_addSwapVariables(manager, beta_temp_0, column_vars, row_vars, n_vars);
-        Cudd_Ref(beta_temp_1);
-        beta[t] = Cudd_addApply(manager, Cudd_addTimes, omega[t], beta_temp_1);
-        Cudd_Ref(beta[t]);
-        Cudd_RecursiveDeref(manager, beta_temp_0);
-        Cudd_RecursiveDeref(manager, beta_temp_1);
-    }
-    Cudd_RecursiveDeref(manager, temporary_P);
-    return beta;
 }

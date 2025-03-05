@@ -10,6 +10,15 @@ using state = int;
 using probability = CUDD_VALUE_TYPE;
 using label = std::string;
 
+inline std::ostream &operator<<(std::ostream &stream, DdNode *node) {
+    if (Cudd_IsConstant(node)) {
+        stream << Cudd_V(node);
+        return stream;
+    }
+    stream << node;
+    return stream;
+}
+
 // This file should contain all the functions related to the Baum-Welch algorithm: forward-backward, update-parameter-estimates, etc.
 namespace cupaal {
     struct report {
@@ -18,6 +27,50 @@ namespace cupaal {
         CUDD_VALUE_TYPE log_likelihood;
     };
 
+    class MarkovModel_HMM {
+    public:
+        DdManager *manager;
+        std::vector<std::string> states;
+        std::vector<std::string> labels;
+        std::vector<std::vector<std::string> > observations;
+
+        std::vector<double> emissions;
+        std::vector<double> transitions;
+        std::vector<double> initial_distribution;
+
+        DdNode **omega;
+        DdNode *tau;
+        DdNode *pi;
+        DdNode *row_cube;
+
+        void baum_welch(unsigned int max_iterations = 100);
+
+        [[nodiscard]] DdNode **forward() const;
+
+        void initialize_from_file(const std::string &filename);
+
+        void add_observation(std::vector<std::string> observation);
+
+        void export_to_file(const std::string &filename);
+
+        void clean_up_cudd() const;
+
+    private:
+        int number_of_states = 0;
+        int number_of_labels = 0;
+        std::map<std::string, int> label_index_map;
+        std::vector<std::vector<int> > mapped_observations;
+
+        int dump_n_rows = 0;
+        int dump_n_cols = 0;
+        int n_row_vars = 0;
+        int n_col_vars = 0;
+        int n_vars = 0;
+        DdNode **row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+        DdNode **col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+        DdNode **comp_row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+        DdNode **comp_col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    };
 
     class MarkovModel_Matrix {
     public:
@@ -84,6 +137,7 @@ namespace cupaal {
         DdNode **comp_col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
     };
 
+
     extern std::vector<probability> forward_matrix(const MarkovModel_Matrix &model);
 
     extern std::vector<probability> backward_matrix(const MarkovModel_Matrix &model);
@@ -95,12 +149,6 @@ namespace cupaal {
                                               const std::vector<probability> &beta);
 
     extern MarkovModel_Matrix baum_welch_matrix(const MarkovModel_Matrix &model);
-
-    extern DdNode **forward(DdManager *manager, DdNode **omega, DdNode *P, DdNode *pi, DdNode **row_vars,
-                            DdNode **column_vars, int n_vars, int n_obs);
-
-    extern DdNode **backward(DdManager *manager, DdNode **omega, DdNode *P, DdNode **row_vars,
-                             DdNode **column_vars, int n_vars, int n_obs);
 }
 
 #endif //BAUM_H
