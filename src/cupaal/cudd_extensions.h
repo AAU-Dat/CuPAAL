@@ -1,6 +1,16 @@
 #ifndef CUDD_EXTENSIONS_H
 #define CUDD_EXTENSIONS_H
 #include <cuddObj.hh>
+#include <iostream>
+
+inline std::ostream &operator<<(std::ostream &stream, DdNode *node) {
+    if (Cudd_IsConstant(node)) {
+        stream << Cudd_V(node);
+        return stream;
+    }
+    stream << node;
+    return stream;
+}
 
 namespace cupaal {
     extern DdNode *Cudd_addExp(DdManager *dd, DdNode *f);
