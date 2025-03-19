@@ -33,21 +33,23 @@ namespace cupaal {
         DdNode *pi;
         DdNode *row_cube;
 
-        [[nodiscard]] DdNode **calculate_alpha() const;
+        [[nodiscard]] DdNode **calculate_alpha(const std::vector<int> &observation) const;
 
-        [[nodiscard]] DdNode **calculate_beta() const;
+        [[nodiscard]] DdNode **calculate_beta(const std::vector<int> &observation) const;
 
         [[nodiscard]] DdNode **calculate_gamma(DdNode **alpha, DdNode **beta) const;
 
-        [[nodiscard]] DdNode **calculate_xi(DdNode **alpha, DdNode **beta) const;
+        [[nodiscard]] DdNode **calculate_xi(DdNode **alpha, DdNode **beta, const std::vector<int> &observation) const;
 
-        void update_model_parameters(DdNode **gamma, DdNode **xi);
+        void update_model_parameters(std::vector<DdNode **> gammas, std::vector<DdNode **> xis);
 
         void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6);
 
         void initialize_from_file(const std::string &filename);
 
         void add_observation(const std::vector<std::string> &observation);
+
+        void add_observation_from_file(const std::string &filename);
 
         void export_to_file(const std::string &filename);
 

@@ -74,6 +74,7 @@ std::vector<double> cupaal::generate_stochastic_probabilities(const unsigned lon
 */
 void cupaal::write_dd_to_dot(DdManager *manager, DdNode *dd, const char *filename) {
     FILE *outfile = fopen(filename, "w");
+    if (outfile == nullptr) return;
     Cudd_DumpDot(manager, 1, &dd, nullptr, nullptr, outfile); // dump the function to .dot file
     fclose(outfile);
 }
