@@ -226,7 +226,6 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations, const do
         iteration_reports.push_back(report);
         microseconds -= report.running_time_microseconds;
     }
-    std::cout << "last iteration: " << current_iteration - 1 << std::endl;
 }
 
 void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
