@@ -28,6 +28,30 @@ namespace cupaal {
             return std::ranges::find(this->tokens, option) != this->tokens.end();
         }
 
+        [[nodiscard]] int getIntFromCmdOption(const std::string &option) const {
+            try {
+                return std::stoi(getCmdOption(option));
+            } catch (const std::invalid_argument &e) {
+                std::cerr << "wrong input for " << option << ": " << getCmdOption(option) << std::endl;
+                exit(EXIT_FAILURE);
+            } catch (const std::out_of_range &e) {
+                std::cerr << "input out of rage for " << option << ": " << getCmdOption(option) << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+
+        [[nodiscard]] double getDoubleFromCmdOption(const std::string &option) const {
+            try {
+                return std::stod(getCmdOption(option));
+            } catch (const std::invalid_argument &e) {
+                std::cerr << "wrong input for " << option << ": " << getCmdOption(option) << std::endl;
+                exit(EXIT_FAILURE);
+            } catch (const std::out_of_range &e) {
+                std::cerr << "input out of rage for " << option << ": " << getCmdOption(option) << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        }
+
     private:
         std::vector<std::string> tokens;
     };

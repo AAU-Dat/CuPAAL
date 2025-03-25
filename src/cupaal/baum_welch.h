@@ -10,7 +10,7 @@
 namespace cupaal {
     struct iterationReport {
         unsigned int iteration_number;
-        unsigned long running_time_microseconds;
+        std::chrono::microseconds running_time_microseconds;
         double log_likelihood;
     };
 
@@ -40,7 +40,7 @@ namespace cupaal {
 
         void update_model_parameters(const std::vector<DdNode **> &gammas, const std::vector<DdNode **> &xis);
 
-        void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6);
+        void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6, std::chrono::seconds time = std::chrono::seconds(3600));
 
         void initialize_from_file(const std::string &filename);
 
@@ -53,6 +53,7 @@ namespace cupaal {
         void clean_up_cudd() const;
 
     private:
+        std::vector<iterationReport> iteration_reports;
         int number_of_states = 0;
         int number_of_labels = 0;
         std::map<std::string, int> label_index_map;

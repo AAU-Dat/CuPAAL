@@ -1,7 +1,7 @@
 #define DD_DEBUG
-#include <iostream>
+#include <chrono>
 #include <cuddInt.h>
-#include <filesystem>
+#include <iostream>
 
 #include "src/cupaal/baum_welch.h"
 #include "src/cupaal/cudd_extensions.h"
@@ -12,7 +12,7 @@ struct options {
     std::string sequencesPath;
     int iterations = 100;
     double epsilon = 1e-6;
-    int time = 3600;
+    std::chrono::seconds time = std::chrono::seconds(5);
     std::string outputPath;
     std::string resultPath;
 } options;
@@ -29,13 +29,14 @@ void parse_input_options(const int argc, char **argv) {
     options.sequencesPath = input.getCmdOption("-s");
 
     if (input.hasCmdOption("-i")) {
-        options.iterations = std::stoi(input.getCmdOption("-i"));
+        options.iterations = input.getIntFromCmdOption("-i");
     }
     if (input.hasCmdOption("-e")) {
-        options.epsilon = std::stod(input.getCmdOption("-e"));
+        options.epsilon = input.getDoubleFromCmdOption("-e");
     }
     if (input.hasCmdOption("-t")) {
-        options.time = std::stoi(input.getCmdOption("-t"));
+        const int seconds = input.getIntFromCmdOption("-t");
+        options.time = std::chrono::seconds(seconds);
     }
     if (input.hasCmdOption("-o")) {
         options.outputPath = input.getCmdOption("-o");
@@ -46,6 +47,7 @@ void parse_input_options(const int argc, char **argv) {
 }
 
 int main(const int argc, char *argv[]) {
+    const auto program_start = std::chrono::steady_clock::now();
     parse_input_options(argc, argv);
     std::cout << "Reading model from file: " << options.modelPath << std::endl;
     std::cout << "Reading sequences from file: " << options.sequencesPath << std::endl;
@@ -55,12 +57,8 @@ int main(const int argc, char *argv[]) {
     cupaal::MarkovModel model;
     model.manager = dd_manager;
     model.initialize_from_file(options.modelPath);
-
-    Cudd_PrintDebug(dd_manager, model.tau, 2, 4);
-    // cupaal::write_dd_to_dot(model.manager, model.tau, "../tau.dot");
-
     model.add_observation_from_file(options.sequencesPath);
-    model.baum_welch(options.iterations, options.epsilon);
+    model.baum_welch(options.iterations, options.epsilon, options.time);
 
     if (!options.outputPath.empty()) {
         std::cout << "Saving model to: " << options.outputPath << std::endl;
@@ -75,5 +73,8 @@ int main(const int argc, char *argv[]) {
     model.clean_up_cudd();
     std::cout << "Remaining references (expecting 0): " << Cudd_CheckZeroRef(dd_manager) << std::endl;
     Cudd_Quit(dd_manager);
+    auto program_end = std::chrono::steady_clock::now();
+    auto elapsed_time = program_end - program_start;
+    std::cout << "Total time spent:" << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time) << std::endl;
     exit(EXIT_SUCCESS);
 }
