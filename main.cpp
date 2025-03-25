@@ -67,7 +67,7 @@ int main(const int argc, char *argv[]) {
 
     if (!options.resultPath.empty()) {
         std::cout << "Saving iteration details to: " << options.resultPath << std::endl;
-        // TODO: implement logic to save the data. Possible options: csv or json
+        model.save_experiment_to_csv(options.resultPath);
     }
 
     model.clean_up_cudd();

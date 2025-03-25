@@ -50,6 +50,8 @@ namespace cupaal {
 
         void export_to_file(const std::string &filename);
 
+        void save_experiment_to_csv(const std::string &filename);
+
         void clean_up_cudd() const;
 
     private:

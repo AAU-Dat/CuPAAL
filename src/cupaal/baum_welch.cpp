@@ -184,10 +184,9 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations, const do
 
     while (microseconds > 0ms && current_iteration <= max_iterations && std::abs(log_likelihood - prev_log_likelihood) >= epsilon) {
         auto iteration_start = std::chrono::system_clock::now();
-        iterationReport report;
+        iterationReport report{};
         prev_log_likelihood = log_likelihood;
         log_likelihood = 0;
-        current_iteration++;
         std::vector<DdNode **> gammas;
         std::vector<DdNode **> xis;
 
@@ -225,6 +224,7 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations, const do
         report.running_time_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - iteration_start);
         iteration_reports.push_back(report);
         microseconds -= report.running_time_microseconds;
+        current_iteration++;
     }
 }
 
@@ -415,6 +415,19 @@ void cupaal::MarkovModel::export_to_file(const std::string &filename) {
         }
         file << std::endl;
     }
+    file.close();
+}
+
+void cupaal::MarkovModel::save_experiment_to_csv(const std::string &filename) {
+    std::ofstream file(filename);
+    if (!file.is_open()) return;
+    file << "iteration,microseconds,log_likelihood\n";
+    for (auto [iteration_number, running_time_microseconds, log_likelihood] : iteration_reports) {
+        file << iteration_number << ","
+        << running_time_microseconds << ","
+        << log_likelihood << std::endl;
+    }
+    file.close();
 }
 
 void cupaal::MarkovModel::clean_up_cudd() const {
