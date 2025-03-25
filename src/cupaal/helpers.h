@@ -8,6 +8,30 @@
 #include <storm/api/storm.h>
 
 namespace cupaal {
+    class InputParser {
+    public:
+        InputParser(const int &argc, char **argv) {
+            for (int i = 1; i < argc; ++i)
+                this->tokens.emplace_back(argv[i]);
+        }
+
+        [[nodiscard]] std::string getCmdOption(const std::string &option) const {
+            if (auto itr = std::ranges::find(this->tokens, option);
+                itr != this->tokens.end() && ++itr != this->tokens.end()) {
+                return *itr;
+            }
+            static const std::string empty_string;
+            return empty_string;
+        }
+
+        [[nodiscard]] bool hasCmdOption(const std::string &option) const {
+            return std::ranges::find(this->tokens, option) != this->tokens.end();
+        }
+
+    private:
+        std::vector<std::string> tokens;
+    };
+
     extern void *safe_malloc(size_t type_size, size_t amount);
 
     extern std::vector<double> generate_stochastic_probabilities(unsigned long size, int seed = 0);
