@@ -102,10 +102,11 @@ DdNode **cupaal::MarkovModel::calculate_xi(DdNode **alpha, DdNode **beta, const 
     return xi;
 }
 
-void cupaal::MarkovModel::update_model_parameters(std::vector<DdNode **> gammas, std::vector<DdNode **> xis) {
+void cupaal::MarkovModel::update_model_parameters(const std::vector<DdNode **> &gammas,
+                                                  const std::vector<DdNode **> &xis) {
     DdNode **gamma = gammas[0];
     DdNode **xi = xis[0];
-    DdNode *number_of_observations = Cudd_addConst(manager, observations.size());
+    DdNode *number_of_observations = Cudd_addConst(manager, static_cast<double>(observations.size()));
     Cudd_Ref(number_of_observations);
 
     for (unsigned int o = 1; o < observations.size(); o++) {
@@ -141,7 +142,8 @@ void cupaal::MarkovModel::update_model_parameters(std::vector<DdNode **> gammas,
     tau = Cudd_addApply(manager, Cudd_addDivide, temporary_xi_sum, temporary_gamma_sum);
     Cudd_Ref(tau);
 
-    DdNode *temporary_gamma_sum2 = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum, gamma[mapped_observations[0].size() - 1]);
+    DdNode *temporary_gamma_sum2 = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum,
+                                                 gamma[mapped_observations[0].size() - 1]);
     Cudd_Ref(temporary_gamma_sum2);
     Cudd_RecursiveDeref(manager, temporary_gamma_sum);
     temporary_gamma_sum = temporary_gamma_sum2;
@@ -173,15 +175,18 @@ void cupaal::MarkovModel::update_model_parameters(std::vector<DdNode **> gammas,
     Cudd_RecursiveDeref(manager, number_of_observations);
 }
 
-void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations, const double epsilon) {
+void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations, const double epsilon, const std::chrono::seconds time) {
+    using namespace std::chrono_literals;
+    auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time);
     unsigned int current_iteration = 1;
     double prev_log_likelihood = -std::numeric_limits<double>::infinity();
     double log_likelihood = 0.0;
 
-    while (current_iteration <= max_iterations && std::abs(log_likelihood - prev_log_likelihood) >= epsilon) {
+    while (microseconds > 0ms && current_iteration <= max_iterations && std::abs(log_likelihood - prev_log_likelihood) >= epsilon) {
+        auto iteration_start = std::chrono::system_clock::now();
+        iterationReport report{};
         prev_log_likelihood = log_likelihood;
         log_likelihood = 0;
-        current_iteration++;
         std::vector<DdNode **> gammas;
         std::vector<DdNode **> xis;
 
@@ -214,12 +219,13 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations, const do
             free(gammas[o]);
             free(xis[o]);
         }
-
-        std::cout << "Previous log likelihood: " << prev_log_likelihood << "\n";
-        std::cout << "Current log likelihood: " << log_likelihood << "\n";
-        std::cout << "Absolute difference: " << std::abs(log_likelihood - prev_log_likelihood) << std::endl;
+        report.iteration_number = current_iteration;
+        report.log_likelihood = log_likelihood;
+        report.running_time_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now() - iteration_start);
+        iteration_reports.push_back(report);
+        microseconds -= report.running_time_microseconds;
+        current_iteration++;
     }
-    std::cout << "last iteration: " << current_iteration - 1 << std::endl;
 }
 
 void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
@@ -246,8 +252,8 @@ void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
         }
     }
 
-    number_of_states = states.size();
-    number_of_labels = labels.size();
+    number_of_states = static_cast<int>(states.size());
+    number_of_labels = static_cast<int>(labels.size());
     dump_n_rows = number_of_states;
     dump_n_cols = number_of_states;
     n_row_vars = 0;
@@ -285,7 +291,7 @@ void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
 
     Sudd_addRead(
         initial_distribution.data(),
-        states.size(),
+        number_of_states,
         1,
         manager,
         &pi,
@@ -343,24 +349,20 @@ void cupaal::MarkovModel::add_observation(const std::vector<std::string> &observ
 
 void cupaal::MarkovModel::add_observation_from_file(const std::string &filename) {
     std::ifstream file(filename);
-    if (!file.is_open())
-    {
+    if (!file.is_open()) {
         return;
     }
     std::string currently_parsing;
     std::string line;
-    while (std::getline(file, line))
-    {
+    while (std::getline(file, line)) {
         std::vector<std::string> observation;
         std::string word;
         std::stringstream line_stream(line);
-        while (std::getline(line_stream, word, ' '))
-        {
+        while (std::getline(line_stream, word, ' ')) {
             observation.push_back(word);
         }
         add_observation(observation);
     }
-
 }
 
 void cupaal::MarkovModel::export_to_file(const std::string &filename) {
@@ -413,6 +415,19 @@ void cupaal::MarkovModel::export_to_file(const std::string &filename) {
         }
         file << std::endl;
     }
+    file.close();
+}
+
+void cupaal::MarkovModel::save_experiment_to_csv(const std::string &filename) {
+    std::ofstream file(filename);
+    if (!file.is_open()) return;
+    file << "iteration,microseconds,log_likelihood\n";
+    for (auto [iteration_number, running_time_microseconds, log_likelihood] : iteration_reports) {
+        file << iteration_number << ","
+        << running_time_microseconds << ","
+        << log_likelihood << std::endl;
+    }
+    file.close();
 }
 
 void cupaal::MarkovModel::clean_up_cudd() const {
@@ -437,7 +452,7 @@ double cupaal::MarkovModel::calculate_log_likelihood(DdNode **alpha) const {
     Cudd_Ref(log_values);
     const auto log_likelihood_add = Cudd_addExistAbstract(manager, log_values, row_cube);
     Cudd_Ref(log_likelihood_add);
-    double log_likelihood = Cudd_V(log_likelihood_add);
+    const double log_likelihood = Cudd_V(log_likelihood_add);
     Cudd_RecursiveDeref(manager, log_values);
     Cudd_RecursiveDeref(manager, log_likelihood_add);
     return log_likelihood;
