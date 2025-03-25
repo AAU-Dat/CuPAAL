@@ -102,10 +102,10 @@ DdNode **cupaal::MarkovModel::calculate_xi(DdNode **alpha, DdNode **beta, const 
     return xi;
 }
 
-void cupaal::MarkovModel::update_model_parameters(std::vector<DdNode **> gammas, std::vector<DdNode **> xis) {
+void cupaal::MarkovModel::update_model_parameters(const std::vector<DdNode **> &gammas, const std::vector<DdNode **> &xis) {
     DdNode **gamma = gammas[0];
     DdNode **xi = xis[0];
-    DdNode *number_of_observations = Cudd_addConst(manager, observations.size());
+    DdNode *number_of_observations = Cudd_addConst(manager, static_cast<double>(observations.size()));
     Cudd_Ref(number_of_observations);
 
     for (unsigned int o = 1; o < observations.size(); o++) {
@@ -246,8 +246,8 @@ void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
         }
     }
 
-    number_of_states = states.size();
-    number_of_labels = labels.size();
+    number_of_states = static_cast<int>(states.size());
+    number_of_labels = static_cast<int>(labels.size());
     dump_n_rows = number_of_states;
     dump_n_cols = number_of_states;
     n_row_vars = 0;
@@ -285,7 +285,7 @@ void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
 
     Sudd_addRead(
         initial_distribution.data(),
-        states.size(),
+        number_of_states,
         1,
         manager,
         &pi,
@@ -437,7 +437,7 @@ double cupaal::MarkovModel::calculate_log_likelihood(DdNode **alpha) const {
     Cudd_Ref(log_values);
     const auto log_likelihood_add = Cudd_addExistAbstract(manager, log_values, row_cube);
     Cudd_Ref(log_likelihood_add);
-    double log_likelihood = Cudd_V(log_likelihood_add);
+    const double log_likelihood = Cudd_V(log_likelihood_add);
     Cudd_RecursiveDeref(manager, log_values);
     Cudd_RecursiveDeref(manager, log_likelihood_add);
     return log_likelihood;

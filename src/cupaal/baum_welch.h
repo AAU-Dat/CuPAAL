@@ -5,16 +5,13 @@
 
 #include "helpers.h"
 
-using state = int;
-using probability = CUDD_VALUE_TYPE;
-using label = std::string;
 
 // This file should contain all the functions related to the Baum-Welch algorithm: forward-backward, update-parameter-estimates, etc.
 namespace cupaal {
-    struct report {
-        unsigned int iterations;
-        unsigned long microseconds;
-        CUDD_VALUE_TYPE log_likelihood;
+    struct iterationReport {
+        unsigned int iteration_number;
+        unsigned long running_time_microseconds;
+        double log_likelihood;
     };
 
     class MarkovModel {
@@ -41,7 +38,7 @@ namespace cupaal {
 
         [[nodiscard]] DdNode **calculate_xi(DdNode **alpha, DdNode **beta, const std::vector<int> &observation) const;
 
-        void update_model_parameters(std::vector<DdNode **> gammas, std::vector<DdNode **> xis);
+        void update_model_parameters(const std::vector<DdNode **> &gammas, const std::vector<DdNode **> &xis);
 
         void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6);
 

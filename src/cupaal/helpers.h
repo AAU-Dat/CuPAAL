@@ -6,7 +6,6 @@
 #define HELPERS_H
 #include <cuddObj.hh>
 #include <storm/api/storm.h>
-#include <storm-parsers/api/storm-parsers.h>
 
 namespace cupaal {
     extern void *safe_malloc(size_t type_size, size_t amount);
