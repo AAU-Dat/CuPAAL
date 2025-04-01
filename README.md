@@ -16,7 +16,7 @@ To use cupaal from the terminal, we support the following commands:
 | `-m` / `--model`      | **Yes**  | Path to the file containing the model description                      |          |
 | `-s` / `--sequences`  | **Yes**  | Path to the file containing observation sequences                      |          |
 | `-i` / `--iterations` | No       | Maximum number of iterations for Baum-Welch                            | `100`    |
-| `-e` / `--epsilon`    | No       | Convergence criterion; stops if likelihood change is smaller than this | `1e-6`   |
-| `-t` / `--time`       | No       | Max time to run in seconds; no new iterations after this               | `3600`   |
+| `-e` / `--epsilon`    | No       | Convergence criterion; stops if likelihood change is smaller than this | `1e-2`   |
+| `-t` / `--time`       | No       | Max time to run in seconds; no new iterations after this               | `240`    |
 | `-o` / `--output`     | No       | Name of the file to save the resulting model                           |          |
 | `-r` / `--results`    | No       | Name of the file to save the experimental results                      |          |

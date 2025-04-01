@@ -42,6 +42,8 @@ namespace cupaal {
 
         void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6, std::chrono::seconds time = std::chrono::seconds(3600));
 
+        void baum_welch_multi(unsigned int max_iterations = 100, double epsilon = 1e-6, std::chrono::seconds time = std::chrono::seconds(3600));
+
         void initialize_from_file(const std::string &filename);
 
         void add_observation(const std::vector<std::string> &observation);

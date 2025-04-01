@@ -11,8 +11,8 @@ struct options {
     std::string modelPath;
     std::string sequencesPath;
     int iterations = 100;
-    double epsilon = 1e-6;
-    std::chrono::seconds time = std::chrono::seconds(5);
+    double epsilon = 1e-2;
+    std::chrono::seconds time = std::chrono::seconds(240);
     std::string outputPath;
     std::string resultPath;
 } options;
@@ -52,7 +52,7 @@ int main(const int argc, char *argv[]) {
     std::cout << "Reading model from file: " << options.modelPath << std::endl;
     std::cout << "Reading sequences from file: " << options.sequencesPath << std::endl;
     DdManager *dd_manager = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
-    // Cudd_SetEpsilon(dd_manager, 0);
+    Cudd_SetEpsilon(dd_manager, 1e-15);
 
     cupaal::MarkovModel model;
     model.manager = dd_manager;
@@ -73,8 +73,9 @@ int main(const int argc, char *argv[]) {
     model.clean_up_cudd();
     std::cout << "Remaining references (expecting 0): " << Cudd_CheckZeroRef(dd_manager) << std::endl;
     Cudd_Quit(dd_manager);
-    auto program_end = std::chrono::steady_clock::now();
-    auto elapsed_time = program_end - program_start;
-    std::cout << "Total time spent:" << std::chrono::duration_cast<std::chrono::milliseconds>(elapsed_time) << std::endl;
+    const auto program_end = std::chrono::steady_clock::now();
+    const auto elapsed_time = program_end - program_start;
+    std::cout << "Total time spent:" << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) <<
+            std::endl;
     exit(EXIT_SUCCESS);
 }
