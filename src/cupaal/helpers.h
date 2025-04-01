@@ -31,10 +31,10 @@ namespace cupaal {
         [[nodiscard]] int getIntFromCmdOption(const std::string &option) const {
             try {
                 return std::stoi(getCmdOption(option));
-            } catch (const std::invalid_argument &e) {
+            } catch (const std::invalid_argument &_) {
                 std::cerr << "wrong input for " << option << ": " << getCmdOption(option) << std::endl;
                 exit(EXIT_FAILURE);
-            } catch (const std::out_of_range &e) {
+            } catch (const std::out_of_range &_) {
                 std::cerr << "input out of rage for " << option << ": " << getCmdOption(option) << std::endl;
                 exit(EXIT_FAILURE);
             }
@@ -43,10 +43,10 @@ namespace cupaal {
         [[nodiscard]] double getDoubleFromCmdOption(const std::string &option) const {
             try {
                 return std::stod(getCmdOption(option));
-            } catch (const std::invalid_argument &e) {
+            } catch (const std::invalid_argument &_) {
                 std::cerr << "wrong input for " << option << ": " << getCmdOption(option) << std::endl;
                 exit(EXIT_FAILURE);
-            } catch (const std::out_of_range &e) {
+            } catch (const std::out_of_range &_) {
                 std::cerr << "input out of rage for " << option << ": " << getCmdOption(option) << std::endl;
                 exit(EXIT_FAILURE);
             }
