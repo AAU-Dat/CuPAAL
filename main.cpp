@@ -12,7 +12,7 @@ struct options {
     std::string sequencesPath;
     int iterations = 100;
     double epsilon = 1e-2;
-    std::chrono::seconds time = std::chrono::seconds(240);
+    std::chrono::seconds time = std::chrono::seconds(14400);
     std::string outputPath;
     std::string resultPath;
 } options;
@@ -52,13 +52,13 @@ int main(const int argc, char *argv[]) {
     std::cout << "Reading model from file: " << options.modelPath << std::endl;
     std::cout << "Reading sequences from file: " << options.sequencesPath << std::endl;
     DdManager *dd_manager = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
-    Cudd_SetEpsilon(dd_manager, 1e-15);
+    Cudd_SetEpsilon(dd_manager, 0);
 
     cupaal::MarkovModel model;
     model.manager = dd_manager;
     model.initialize_from_file(options.modelPath);
     model.add_observation_from_file(options.sequencesPath);
-    model.baum_welch(options.iterations, options.epsilon, options.time);
+    model.baum_welch_multi(options.iterations, options.epsilon, options.time);
 
     if (!options.outputPath.empty()) {
         std::cout << "Saving model to: " << options.outputPath << std::endl;
