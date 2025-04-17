@@ -167,9 +167,133 @@ void cupaal::MarkovModel::update_model_parameters(const std::vector<DdNode **> &
         omega[l] = temp_omega;
     }
 
+    // update initial
     Cudd_RecursiveDeref(manager, pi);
     pi = Cudd_addApply(manager, Cudd_addDivide, gamma[0], number_of_observations);
     Cudd_Ref(pi);
+    Cudd_RecursiveDeref(manager, temporary_gamma_sum);
+    Cudd_RecursiveDeref(manager, temporary_xi_sum);
+    Cudd_RecursiveDeref(manager, number_of_observations);
+}
+
+
+void cupaal::MarkovModel::update_model_parameters_multi(const std::vector<DdNode **> &gammas,
+                                                        const std::vector<DdNode **> &xis,
+                                                        const std::map<std::vector<int>, int> &observation_map) {
+    std::vector<DdNode *> counts;
+    for (const auto &amount: observation_map | std::views::values) {
+        DdNode *count = Cudd_addConst(manager, amount);
+        Cudd_Ref(count);
+        counts.push_back(count);
+    }
+
+    // mutiply each gamma and xi value with the number of counts for that observation
+    for (unsigned int o = 0; o < observation_map.size(); o++) {
+        for (unsigned int t = 0; t < mapped_observations[0].size() - 1; t++) {
+            DdNode *temp_gamma = Cudd_addApply(manager, Cudd_addTimes, gammas[o][t], counts[o]);
+            Cudd_Ref(temp_gamma);
+            Cudd_RecursiveDeref(manager, gammas[o][t]);
+            gammas[o][t] = temp_gamma;
+
+            DdNode *temp_xi = Cudd_addApply(manager, Cudd_addTimes, xis[o][t], counts[o]);
+            Cudd_Ref(temp_xi);
+            Cudd_RecursiveDeref(manager, xis[o][t]);
+            xis[o][t] = temp_xi;
+        }
+    }
+
+    for (unsigned int o = 0; o < observation_map.size(); o++) {
+        DdNode *temp_gamma = Cudd_addApply(manager, Cudd_addTimes, gammas[o][mapped_observations[0].size() - 1],
+                                           counts[o]);
+        Cudd_Ref(temp_gamma);
+        Cudd_RecursiveDeref(manager, gammas[o][mapped_observations[0].size() - 1]);
+        gammas[o][mapped_observations[0].size() - 1] = temp_gamma;
+    }
+
+    DdNode **gamma = gammas[0];
+    DdNode **xi = xis[0];
+    DdNode *number_of_observations = Cudd_addConst(manager, static_cast<double>(mapped_observations.size()));
+    Cudd_Ref(number_of_observations);
+
+    // precaculate common values: sum the gamma and xi vectors over each observation
+    for (unsigned int o = 1; o < observation_map.size(); o++) {
+        for (unsigned int t = 0; t < mapped_observations[0].size() - 1; t++) {
+            DdNode *temp_gamma = Cudd_addApply(manager, Cudd_addPlus, gamma[t], gammas[o][t]);
+            Cudd_Ref(temp_gamma);
+            Cudd_RecursiveDeref(manager, gamma[t]);
+            gamma[t] = temp_gamma;
+
+            DdNode *temp_xi = Cudd_addApply(manager, Cudd_addPlus, xi[t], xis[o][t]);
+            Cudd_Ref(temp_xi);
+            Cudd_RecursiveDeref(manager, xi[t]);
+            xi[t] = temp_xi;
+        }
+    }
+
+    // precalculate common values: sum the vector values
+    DdNode *temporary_gamma_sum = Cudd_ReadZero(manager);
+    Cudd_Ref(temporary_gamma_sum);
+    DdNode *temporary_xi_sum = Cudd_ReadZero(manager);
+    Cudd_Ref(temporary_xi_sum);
+    for (unsigned int t = 0; t < mapped_observations[0].size() - 1; t++) {
+        DdNode *temporary_gamma_sum2 = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum, gamma[t]);
+        Cudd_Ref(temporary_gamma_sum2);
+        Cudd_RecursiveDeref(manager, temporary_gamma_sum);
+        temporary_gamma_sum = temporary_gamma_sum2;
+        DdNode *temporary_xi_sum2 = Cudd_addApply(manager, Cudd_addPlus, temporary_xi_sum, xi[t]);
+        Cudd_Ref(temporary_xi_sum2);
+        Cudd_RecursiveDeref(manager, temporary_xi_sum);
+        temporary_xi_sum = temporary_xi_sum2;
+    }
+
+    // update pi (initial)
+    Cudd_RecursiveDeref(manager, pi);
+    pi = Cudd_addApply(manager, Cudd_addDivide, gamma[0], number_of_observations);
+    Cudd_Ref(pi);
+    // update tau (transitions)
+    Cudd_RecursiveDeref(manager, tau);
+    tau = Cudd_addApply(manager, Cudd_addDivide, temporary_xi_sum, temporary_gamma_sum);
+    Cudd_Ref(tau);
+    // update omega (labelling)
+    DdNode *temporary_gamma_sum2 = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum,
+                                                 gamma[mapped_observations[0].size() - 1]);
+    Cudd_Ref(temporary_gamma_sum2);
+    Cudd_RecursiveDeref(manager, temporary_gamma_sum);
+    temporary_gamma_sum = temporary_gamma_sum2;
+
+    for (unsigned int l = 0; l < labels.size(); l++) {
+        Cudd_RecursiveDeref(manager, omega[l]);
+        omega[l] = Cudd_ReadZero(manager);
+        Cudd_Ref(omega[l]);
+    }
+
+    for (unsigned int o = 0; o < observation_map.size(); o++) {
+        for (unsigned int t = 0; t < mapped_observations[0].size(); t++) {
+            DdNode *temp_omega = Cudd_addApply(manager, Cudd_addPlus, omega[mapped_observations[o][t]], gamma[t]);
+            Cudd_Ref(temp_omega);
+            Cudd_RecursiveDeref(manager, omega[mapped_observations[o][t]]);
+            omega[mapped_observations[o][t]] = temp_omega;
+        }
+    }
+
+    for (unsigned int l = 0; l < labels.size(); l++) {
+        DdNode *scaling_factor = Cudd_addConst(manager, static_cast<double>(observation_map.size()));
+        Cudd_Ref(scaling_factor);
+
+        DdNode *scaled_gamma_sum = Cudd_addApply(manager, Cudd_addTimes, temporary_gamma_sum, scaling_factor);
+        Cudd_Ref(scaled_gamma_sum);
+
+        DdNode *temp_omega = Cudd_addApply(manager, Cudd_addDivide, omega[l], scaled_gamma_sum);
+        Cudd_Ref(temp_omega);
+        Cudd_RecursiveDeref(manager, scaling_factor);
+        Cudd_RecursiveDeref(manager, scaled_gamma_sum);
+        Cudd_RecursiveDeref(manager, omega[l]);
+        omega[l] = temp_omega;
+    }
+
+    for (const auto count: counts) {
+        Cudd_RecursiveDeref(manager, count);
+    }
     Cudd_RecursiveDeref(manager, temporary_gamma_sum);
     Cudd_RecursiveDeref(manager, temporary_xi_sum);
     Cudd_RecursiveDeref(manager, number_of_observations);
@@ -195,6 +319,8 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations,
         std::vector<DdNode **> xis;
 
         for (unsigned int o = 0; o < observations.size(); o++) {
+            std::cout << "Calculating alpha for iteration: " << current_iteration << ", observation: " << o <<
+                    std::endl;
             const auto alpha = calculate_alpha(mapped_observations[o]);
             const auto beta = calculate_beta(mapped_observations[o]);
             const auto gamma = calculate_gamma(alpha, beta);
@@ -229,7 +355,7 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations,
             std::chrono::system_clock::now() - iteration_start);
         iteration_reports.push_back(report);
         std::cout << "Iteration: " << report.iteration_number
-                << ", Time: " << std::chrono::duration_cast<std::chrono::seconds>(report.running_time_microseconds).
+                << ", Time (ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(report.running_time_microseconds).
                 count()
                 << ", Log likelihood: " << report.log_likelihood << std::endl;
         microseconds -= report.running_time_microseconds;
@@ -238,8 +364,8 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations,
 }
 
 void cupaal::MarkovModel::baum_welch_multi(const unsigned int max_iterations,
-                                     const double epsilon,
-                                     const std::chrono::seconds time) {
+                                           const double epsilon,
+                                           const std::chrono::seconds time) {
     using namespace std::chrono_literals;
     auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time);
     unsigned int current_iteration = 1;
@@ -262,19 +388,16 @@ void cupaal::MarkovModel::baum_welch_multi(const unsigned int max_iterations,
         std::vector<DdNode **> xis;
 
         for (const auto &[observation, count]: observation_counts) {
-            std::cout << "Observation: " << observation.data() << std::endl;
-            std::cout << "Count: " << count << std::endl;
-
+            std::cout << "Calculating alpha for iteration: " << current_iteration << std::endl;
             const auto alpha = calculate_alpha(observation);
             const auto beta = calculate_beta(observation);
             const auto gamma = calculate_gamma(alpha, beta);
             const auto xi = calculate_xi(alpha, beta, observation);
 
-            for (int n = 0; n < count; n++) {
-                gammas.push_back(gamma);
-                xis.push_back(xi);
-            }
-                log_likelihood += calculate_log_likelihood(alpha) * count;
+            gammas.push_back(gamma);
+            xis.push_back(xi);
+
+            log_likelihood += calculate_log_likelihood(alpha) * count;
 
             for (unsigned int t = 0; t < observation.size(); t++) {
                 Cudd_RecursiveDeref(manager, alpha[t]);
@@ -284,27 +407,24 @@ void cupaal::MarkovModel::baum_welch_multi(const unsigned int max_iterations,
             free(beta);
         }
 
-        update_model_parameters(gammas, xis);
+        update_model_parameters_multi(gammas, xis, observation_counts);
 
-        int sum = 0;
-        for (const auto &count: observation_counts | std::views::values) {
-            sum += count;
+        for (unsigned int o = 0; o < gammas.size(); o++) {
             for (unsigned int t = 0; t < observations[0].size() - 1; t++) {
-                Cudd_RecursiveDeref(manager, gammas[sum - 1][t]);
-                Cudd_RecursiveDeref(manager, xis[sum - 1][t]);
+                Cudd_RecursiveDeref(manager, gammas[o][t]);
+                Cudd_RecursiveDeref(manager, xis[o][t]);
             }
-            Cudd_RecursiveDeref(manager, gammas[sum - 1][observations[0].size() - 1]);
-            free(gammas[sum - 1]);
-            free(xis[sum - 1]);
+            Cudd_RecursiveDeref(manager, gammas[o][observations[0].size() - 1]);
+            free(gammas[o]);
+            free(xis[o]);
         }
-
         report.iteration_number = current_iteration;
         report.log_likelihood = log_likelihood;
         report.running_time_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::system_clock::now() - iteration_start);
         iteration_reports.push_back(report);
         std::cout << "Iteration: " << report.iteration_number
-                << ", Time: " << std::chrono::duration_cast<std::chrono::seconds>(report.running_time_microseconds).
+                << ", Time (ms): " << std::chrono::duration_cast<std::chrono::milliseconds>(report.running_time_microseconds).
                 count()
                 << ", Log likelihood: " << report.log_likelihood << std::endl;
         microseconds -= report.running_time_microseconds;
@@ -504,10 +624,10 @@ void cupaal::MarkovModel::export_to_file(const std::string &filename) {
 void cupaal::MarkovModel::save_experiment_to_csv(const std::string &filename) {
     std::ofstream file(filename);
     if (!file.is_open()) return;
-    file << "iteration,microseconds,log_likelihood\n";
+    file << "iteration,milliseconds,log_likelihood\n";
     for (auto [iteration_number, running_time_microseconds, log_likelihood]: iteration_reports) {
         file << iteration_number << ","
-                << running_time_microseconds << ","
+                << std::chrono::duration_cast<std::chrono::milliseconds>(running_time_microseconds).count() << ","
                 << log_likelihood << std::endl;
     }
     file.close();

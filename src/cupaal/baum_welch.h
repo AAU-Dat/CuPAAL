@@ -40,6 +40,8 @@ namespace cupaal {
 
         void update_model_parameters(const std::vector<DdNode **> &gammas, const std::vector<DdNode **> &xis);
 
+        void update_model_parameters_multi(const std::vector<DdNode **> &gammas, const std::vector<DdNode **> &xis, const std::map<std::vector<int>, int> &observation_map);
+
         void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6, std::chrono::seconds time = std::chrono::seconds(3600));
 
         void baum_welch_multi(unsigned int max_iterations = 100, double epsilon = 1e-6, std::chrono::seconds time = std::chrono::seconds(3600));

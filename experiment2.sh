@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cupaal_postfix="_cupaal_run"
-models=(leader_sync crowds brp)
+models=(oscillators1 oscillators2 oscillators3)
 
 #for model in "${models[@]}"
 #do
