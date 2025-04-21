@@ -123,7 +123,8 @@ void cupaal::MarkovModel::update_model_parameters(DdNode **gamma, DdNode **xi) {
     tau = Cudd_addApply(manager, Cudd_addDivide, temporary_xi_sum, temporary_gamma_sum);
     Cudd_Ref(tau);
 
-    DdNode *temporary_gamma_sum2 = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum, gamma[mapped_observations[0].size() - 1]);
+    DdNode *temporary_gamma_sum2 = Cudd_addApply(manager, Cudd_addPlus, temporary_gamma_sum,
+                                                 gamma[mapped_observations[0].size() - 1]);
     Cudd_Ref(temporary_gamma_sum2);
     Cudd_RecursiveDeref(manager, temporary_gamma_sum);
     temporary_gamma_sum = temporary_gamma_sum2;
@@ -156,8 +157,9 @@ void cupaal::MarkovModel::update_model_parameters(DdNode **gamma, DdNode **xi) {
 
 
 void cupaal::MarkovModel::update_model_parameters_multiple_observations(const std::vector<DdNode **> &gammas,
-                                                        const std::vector<DdNode **> &xis,
-                                                        const std::map<std::vector<int>, int> &observation_map) {
+                                                                        const std::vector<DdNode **> &xis,
+                                                                        const std::map<std::vector<int>, int> &
+                                                                        observation_map) {
     std::vector<DdNode *> counts;
     for (const auto &amount: observation_map | std::views::values) {
         DdNode *count = Cudd_addConst(manager, amount);
@@ -330,8 +332,8 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations,
 }
 
 void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int max_iterations,
-                                           const double epsilon,
-                                           const std::chrono::seconds time) {
+                                                           const double epsilon,
+                                                           const std::chrono::seconds time) {
     using namespace std::chrono_literals;
     auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(time);
     unsigned int current_iteration = 1;
