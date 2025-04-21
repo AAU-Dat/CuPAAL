@@ -38,13 +38,17 @@ namespace cupaal {
 
         [[nodiscard]] DdNode **calculate_xi(DdNode **alpha, DdNode **beta, const std::vector<int> &observation) const;
 
-        void update_model_parameters(const std::vector<DdNode **> &gammas, const std::vector<DdNode **> &xis);
+        void update_model_parameters(DdNode **gamma, DdNode **xi);
 
-        void update_model_parameters_multi(const std::vector<DdNode **> &gammas, const std::vector<DdNode **> &xis, const std::map<std::vector<int>, int> &observation_map);
+        void update_model_parameters_multiple_observations(const std::vector<DdNode **> &gammas,
+                                                           const std::vector<DdNode **> &xis,
+                                                           const std::map<std::vector<int>, int> &observation_map);
 
-        void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6, std::chrono::seconds time = std::chrono::seconds(3600));
+        void baum_welch(unsigned int max_iterations = 100, double epsilon = 1e-6,
+                        std::chrono::seconds time = std::chrono::seconds(3600));
 
-        void baum_welch_multi(unsigned int max_iterations = 100, double epsilon = 1e-6, std::chrono::seconds time = std::chrono::seconds(3600));
+        void baum_welch_multiple_observations(unsigned int max_iterations = 100, double epsilon = 1e-6,
+                                              std::chrono::seconds time = std::chrono::seconds(3600));
 
         void initialize_from_file(const std::string &filename);
 

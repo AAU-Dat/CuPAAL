@@ -58,7 +58,13 @@ int main(const int argc, char *argv[]) {
     model.manager = dd_manager;
     model.initialize_from_file(options.modelPath);
     model.add_observation_from_file(options.sequencesPath);
-    model.baum_welch_multi(options.iterations, options.epsilon, options.time);
+
+    if (model.observations.size() > 1) {
+        model.baum_welch_multiple_observations(options.iterations, options.epsilon, options.time);
+    } else {
+        model.baum_welch(options.iterations, options.epsilon, options.time);
+    }
+
 
     if (!options.outputPath.empty()) {
         std::cout << "Saving model to: " << options.outputPath << std::endl;
@@ -75,7 +81,6 @@ int main(const int argc, char *argv[]) {
     Cudd_Quit(dd_manager);
     const auto program_end = std::chrono::steady_clock::now();
     const auto elapsed_time = program_end - program_start;
-    std::cout << "Total time spent:" << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) <<
-            std::endl;
+    std::cout << "Total time spent(s): " << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) << std::endl;
     exit(EXIT_SUCCESS);
 }
