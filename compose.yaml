@@ -1,0 +1,13 @@
+services:
+  experiment:
+    environment:
+      PRISM_MODEL: models/accuracy_experiment/dtmc/leader_sync.4-3.v1.prism
+      ITERATIONS: 1000
+      TIME: 360
+      EPSILON: 0.01
+    build:
+      context: .
+      args:
+        BUILD_JOBS: 16
+    volumes:
+      - ./container-results:/CuPAAL/results

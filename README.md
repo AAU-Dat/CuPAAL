@@ -20,3 +20,14 @@ To use cupaal from the terminal, we support the following commands:
 | `-t` / `--time`       | No       | Max time to run in seconds; no new iterations after this               | `240`    |
 | `-o` / `--output`     | No       | Name of the file to save the resulting model                           |          |
 | `-r` / `--results`    | No       | Name of the file to save the experimental results                      |          |
+
+### Docker
+
+To run an example experiment for comparing jajapy and cupaal, you only need the dockerfile, compose.yaml, and a provided
+in this repository, and a PRISM file.
+
+The following docker compose command will create a bind mount folder containing the results.
+
+```shell
+docker compose up --build
+```
