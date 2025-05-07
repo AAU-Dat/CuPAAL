@@ -45,9 +45,7 @@ void bw_wrapping_function(
     }
 
     if (model.observations.size() > 1) {
-        std::cout << "Running Baum-Welch with multiple observations" << std::endl;
         model.baum_welch_multiple_observations(max_iterations, epsilon, time);
-        std::cout << "Finished Baum-Welch with multiple observations" << std::endl;
     } else {
         model.baum_welch(max_iterations, epsilon, time);
     }

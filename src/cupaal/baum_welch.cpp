@@ -360,7 +360,6 @@ void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int ma
             std::vector<DdNode **> xis;
             
         for (const auto &[observation, count]: observation_counts) {
-            std::cout << "Started BW" << std::endl;
             std::cout << "Calculating alpha for iteration: " << current_iteration << std::endl;
             const auto alpha = calculate_alpha(observation);
             const auto beta = calculate_beta(observation);
@@ -612,6 +611,7 @@ void cupaal::MarkovModel::add_observation(const std::vector<std::string> &observ
     }
     mapped_observations.push_back(mapped_observation);
 }
+
 
 void cupaal::MarkovModel::add_observation_from_file(const std::string &filename) {
     std::ifstream file(filename);
