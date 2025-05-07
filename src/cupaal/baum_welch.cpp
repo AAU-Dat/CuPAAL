@@ -12,6 +12,10 @@
 #define COL_VAR_INDEX_OFFSET 1
 #define COL_VAR_INDEX_MULTIPLIER 2
 
+void cupaal::helloworld() {
+    std::cout << "Hello, this is called from BW!" << std::endl;
+}
+
 const std::set<std::string> MODEL_ELEMENTS = {"states", "labels", "initial", "transitions", "emissions"};
 
 DdNode **cupaal::MarkovModel::calculate_alpha(const std::vector<int> &observation) const {
@@ -339,23 +343,24 @@ void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int ma
     unsigned int current_iteration = 1;
     double prev_log_likelihood = -std::numeric_limits<double>::infinity();
     double log_likelihood = 0.0;
-
+    
     std::map<std::vector<int>, int> observation_counts;
     for (const auto &observation: mapped_observations) {
         observation_counts[observation]++;
     }
-
+    
     while (microseconds > 0ms &&
-           current_iteration <= max_iterations &&
-           std::abs(log_likelihood - prev_log_likelihood) >= epsilon) {
-        auto iteration_start = std::chrono::system_clock::now();
-        iterationReport report{};
-        prev_log_likelihood = log_likelihood;
-        log_likelihood = 0;
-        std::vector<DdNode **> gammas;
-        std::vector<DdNode **> xis;
-
+        current_iteration <= max_iterations &&
+        std::abs(log_likelihood - prev_log_likelihood) >= epsilon) {
+            auto iteration_start = std::chrono::system_clock::now();
+            iterationReport report{};
+            prev_log_likelihood = log_likelihood;
+            log_likelihood = 0;
+            std::vector<DdNode **> gammas;
+            std::vector<DdNode **> xis;
+            
         for (const auto &[observation, count]: observation_counts) {
+            std::cout << "Started BW" << std::endl;
             std::cout << "Calculating alpha for iteration: " << current_iteration << std::endl;
             const auto alpha = calculate_alpha(observation);
             const auto beta = calculate_beta(observation);
@@ -399,6 +404,94 @@ void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int ma
         microseconds -= report.running_time_microseconds;
         current_iteration++;
     }
+}
+
+void cupaal::MarkovModel::initialize_adds(){
+    number_of_states = static_cast<int>(states.size());
+    number_of_labels = static_cast<int>(labels.size());
+    dump_n_rows = number_of_states;
+    dump_n_cols = number_of_states;
+    n_row_vars = 0;
+    n_col_vars = 0;
+    n_vars = ceil(log2(number_of_states));
+    std::cout << "row_vars: " << n_vars << std::endl;
+    row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    comp_row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    comp_col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
+    omega = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), number_of_labels));
+
+    for (int i = 0; i < number_of_labels; i++) {
+        label_index_map[labels.at(i)] = i;
+    }
+
+    // read transition into ADD form
+    Sudd_addRead(
+        transitions.data(),
+        number_of_states,
+        number_of_states,
+        manager,
+        &tau,
+        &row_vars,
+        &col_vars,
+        &comp_row_vars,
+        &comp_col_vars,
+        &n_row_vars,
+        &n_col_vars,
+        &dump_n_rows,
+        &dump_n_cols,
+        ROW_VAR_INDEX_OFFSET,
+        ROW_VAR_INDEX_MULTIPLIER,
+        COL_VAR_INDEX_OFFSET,
+        COL_VAR_INDEX_MULTIPLIER);
+
+    Sudd_addRead(
+        initial_distribution.data(),
+        number_of_states,
+        1,
+        manager,
+        &pi,
+        &row_vars,
+        &col_vars,
+        &comp_row_vars,
+        &comp_col_vars,
+        &n_row_vars,
+        &n_col_vars,
+        &dump_n_rows,
+        &dump_n_cols,
+        ROW_VAR_INDEX_OFFSET,
+        ROW_VAR_INDEX_MULTIPLIER,
+        COL_VAR_INDEX_OFFSET,
+        COL_VAR_INDEX_MULTIPLIER);
+
+    for (int l = 0; l < number_of_labels; l++) {
+        Sudd_addRead(
+            &emissions[l * number_of_states],
+            number_of_states,
+            1,
+            manager,
+            &omega[l],
+            &row_vars,
+            &col_vars,
+            &comp_row_vars,
+            &comp_col_vars,
+            &n_row_vars,
+            &n_col_vars,
+            &dump_n_rows,
+            &dump_n_cols,
+            ROW_VAR_INDEX_OFFSET,
+            ROW_VAR_INDEX_MULTIPLIER,
+            COL_VAR_INDEX_OFFSET,
+            COL_VAR_INDEX_MULTIPLIER);
+    }
+
+    auto cube_array = new int[n_vars];
+    for (int i = 0; i < n_vars; i++) {
+        cube_array[i] = 1;
+    }
+    row_cube = Cudd_addComputeCube(manager, row_vars, cube_array, n_vars);
+    Cudd_Ref(row_cube);
+    delete[] cube_array;
 }
 
 void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {

@@ -5,45 +5,51 @@
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
 #include <pybind11/chrono.h>
-
 #include <vector>
 #include <string>
 #include <iostream>
-#include <src/cupaal/baum_welch.h>
-#include <cuddObj.hh>
+#include "cupaal/baum_welch.h"
+
 namespace py = pybind11; 
 
-void helloworld() {
-    std::cout << "Hello, World!" << std::endl;
-}
-
-PYBIND11_MODULE(cupaal_bindings, m) {
-    m.doc() = "pybind11 example plugin"; // optional module docstring
-    m.def("bw_wrapping_function", &bw_wrapping_function, "A function that wraps the Baum-Welch algorithm")
-}
-
-
-
 // Example function
-void bw_wrapping_function(const std::vector<std::string>& labels, const std::vector<std::vector<std::string>>& observations, const std::vector<std::double>& initial_distribution, const std::vector<std::double>& transitions, const std::vector<std::double>& emissions, unsigned int max_iterations =100,double epsilon = 1e-6,std::chrono::seconds time = std::chrono::seconds(3600), const std::string& outputPath = "", const std::string& resultPath = "") {
+void bw_wrapping_function(
+    const std::vector<std::string>& states,
+    const std::vector<std::string>& labels, 
+    const std::vector<std::vector<std::string>>& observations, 
+    const std::vector<double>& initial_distribution, 
+    const std::vector<double>& transitions, 
+    const std::vector<double>& emissions, 
+    unsigned int max_iterations = 100, 
+    double epsilon = 1e-6, 
+    std::chrono::seconds time = std::chrono::seconds(3600), 
+    const std::string& outputPath = "", 
+    const std::string& resultPath = "") {
+    const auto program_start = std::chrono::steady_clock::now();
     DdManager *dd_manager = Cudd_Init(0, 0, CUDD_UNIQUE_SLOTS, CUDD_CACHE_SLOTS, 0); 
     Cudd_SetEpsilon(dd_manager, 0);
 
     cupaal::MarkovModel model;
     model.manager = dd_manager;
 
+    model.states = 
     model.labels = labels;
     model.observations = observations;
     model.initial_distribution = initial_distribution;
     model.transitions = transitions;
     model.emissions = emissions;
-
-    make_adds(model);
+    
+    model.initialize_adds();
+    for (const auto& observation : observations) {
+        model.add_observation(observation);
+    }
 
     if (model.observations.size() > 1) {
-        model.baum_welch_multiple_observations(iterations, epsilon, time);
+        std::cout << "Running Baum-Welch with multiple observations" << std::endl;
+        model.baum_welch_multiple_observations(max_iterations, epsilon, time);
+        std::cout << "Finished Baum-Welch with multiple observations" << std::endl;
     } else {
-        model.baum_welch(iterations, epsilon, time);
+        model.baum_welch(max_iterations, epsilon, time);
     }
 
     if (!outputPath.empty()) {
@@ -65,89 +71,45 @@ void bw_wrapping_function(const std::vector<std::string>& labels, const std::vec
     exit(EXIT_SUCCESS);
 }
 
-void cupaal::MarkovModel::make_adds(const MarkovModel &model) {
-    number_of_states = static_cast<int>(model.states.size());
-    number_of_labels = static_cast<int>(model.labels.size());
-    dump_n_rows = number_of_states;
-    dump_n_cols = number_of_states;
-    n_row_vars = 0;
-    n_col_vars = 0;
-    n_vars = ceil(log2(number_of_states));
-    row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
-    col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
-    comp_row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
-    comp_col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
-    omega = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), number_of_labels));
 
-    for (int i = 0; i < number_of_labels; i++) {
-        label_index_map[labels.at(i)] = i;
-    }
-
-    // read transition into ADD form
-    Sudd_addRead(
-        model.transitions.data(),
-        number_of_states,
-        number_of_states,
-        manager,
-        &tau,
-        &row_vars,
-        &col_vars,
-        &comp_row_vars,
-        &comp_col_vars,
-        &n_row_vars,
-        &n_col_vars,
-        &dump_n_rows,
-        &dump_n_cols,
-        ROW_VAR_INDEX_OFFSET,
-        ROW_VAR_INDEX_MULTIPLIER,
-        COL_VAR_INDEX_OFFSET,
-        COL_VAR_INDEX_MULTIPLIER);
-
-    Sudd_addRead(
-        model.initial_distribution.data(),
-        number_of_states,
-        1,
-        manager,
-        &pi,
-        &row_vars,
-        &col_vars,
-        &comp_row_vars,
-        &comp_col_vars,
-        &n_row_vars,
-        &n_col_vars,
-        &dump_n_rows,
-        &dump_n_cols,
-        ROW_VAR_INDEX_OFFSET,
-        ROW_VAR_INDEX_MULTIPLIER,
-        COL_VAR_INDEX_OFFSET,
-        COL_VAR_INDEX_MULTIPLIER);
-
-    for (int l = 0; l < number_of_labels; l++) {
-        Sudd_addRead(
-            &model.labels[l * number_of_states],
-            number_of_states,
-            1,
-            manager,
-            &omega[l],
-            &row_vars,
-            &col_vars,
-            &comp_row_vars,
-            &comp_col_vars,
-            &n_row_vars,
-            &n_col_vars,
-            &dump_n_rows,
-            &dump_n_cols,
-            ROW_VAR_INDEX_OFFSET,
-            ROW_VAR_INDEX_MULTIPLIER,
-            COL_VAR_INDEX_OFFSET,
-            COL_VAR_INDEX_MULTIPLIER);
-    }
-
-    auto cube_array = new int[n_vars];
-    for (int i = 0; i < n_vars; i++) {
-        cube_array[i] = 1;
-    }
-    row_cube = Cudd_addComputeCube(manager, row_vars, cube_array, n_vars);
-    Cudd_Ref(row_cube);
-    delete[] cube_array;
-}
+PYBIND11_MODULE(libcupaal_bindings, m) {
+    m.def("bw_wrapping_function", 
+        [](const std::vector<std::string>& states,
+           const std::vector<std::string>& labels,
+           const std::vector<std::vector<std::string>>& observations,
+           const std::vector<double>& initial_distribution,
+           const std::vector<double>& transitions,
+           const std::vector<double>& emissions,
+           unsigned int max_iterations,
+           double epsilon,
+           int time_seconds,
+           const std::string& outputPath,
+           const std::string& resultPath) {
+            
+            bw_wrapping_function(
+                states,
+                labels,
+                observations,
+                initial_distribution,
+                transitions,
+                emissions,
+                max_iterations,
+                epsilon,
+                std::chrono::seconds(time_seconds),
+                outputPath,
+                resultPath
+            );
+        },
+        py::arg("labels"),
+        py::arg("labels"),
+        py::arg("observations"),
+        py::arg("initial_distribution"),
+        py::arg("transitions"),
+        py::arg("emissions"),
+        py::arg("max_iterations") = 100,
+        py::arg("epsilon") = 1e-6,
+        py::arg("time_seconds") = 3600,
+        py::arg("outputPath") = "",
+        py::arg("resultPath") = "",
+        "A wrapper for the Baum-Welch algorithm with Python-friendly chrono input."
+    );}

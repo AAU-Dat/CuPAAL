@@ -14,6 +14,7 @@ namespace cupaal {
         double log_likelihood;
     };
 
+    void helloworld();
     class MarkovModel {
     public:
         DdManager *manager;
@@ -50,6 +51,9 @@ namespace cupaal {
         void baum_welch_multiple_observations(unsigned int max_iterations = 100, double epsilon = 1e-6,
                                               std::chrono::seconds time = std::chrono::seconds(3600));
 
+        
+        void initialize_adds();
+        
         void initialize_from_file(const std::string &filename);
 
         void add_observation(const std::vector<std::string> &observation);

@@ -7,6 +7,7 @@
 
 void *cupaal::safe_malloc(const size_t type_size, size_t amount) {
     void *ptr = malloc(type_size * amount);
+    std::cout << "Allocated " << type_size * amount << " bytes" << std::endl;
     if (ptr == nullptr) {
         fprintf(stderr, "Memory allocation failed\n");
         exit(EXIT_FAILURE);

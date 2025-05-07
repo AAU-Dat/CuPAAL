@@ -4,6 +4,8 @@ project(CuPAAL VERSION 1.0)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 #set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 
 add_executable(${PROJECT_NAME} main.cpp)
 
@@ -34,3 +36,37 @@ target_include_directories(CuddExtensions
 add_library(Helpers src/cupaal/helpers.cpp src/cupaal/helpers.h)
 target_include_directories(Helpers PUBLIC ${HEADER_FILES} ${storm_INCLUDE_DIR})
 target_link_libraries(Helpers PRIVATE storm storm-parsers)
+
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
+find_package(pybind11 CONFIG REQUIRED)
+message(STATUS "Found pybind11 v${pybind11_VERSION}: ${pybind11_INCLUDE_DIRS}")
+
+
+# Build the .so file for bindings
+add_library(cupaal_bindings SHARED
+        $<TARGET_OBJECTS:BaumWelch>     
+        $<TARGET_OBJECTS:CuddExtensions>
+        $<TARGET_OBJECTS:Helpers>
+        bindings/cupaal-bindings.cpp
+)
+
+target_link_libraries(cupaal_bindings
+    PRIVATE
+    Helpers
+    BaumWelch
+    CuddExtensions
+    storm
+    storm-parsers
+    pybind11::module
+)
+
+target_include_directories(cupaal_bindings PRIVATE
+    ${Python3_INCLUDE_DIRS}
+    ${storm_INCLUDE_DIR}
+    ${CMAKE_SOURCE_DIR}/src        # 👈 This lets it find "cupaal/baum_welch.h"
+)
+
+# target_include_directories(cupaal_bindings PRIVATE
+#     ${Python_INCLUDE_DIRS}
+# )
+target_link_libraries(cupaal_bindings PRIVATE pybind11::module)
