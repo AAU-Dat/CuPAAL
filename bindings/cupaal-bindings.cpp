@@ -25,21 +25,10 @@ void bw_wrapping_function(
     const std::string& outputPath = "", 
     const std::string& resultPath = "") {
     const auto program_start = std::chrono::steady_clock::now();
-    DdManager *dd_manager = Cudd_Init(0, 0, CUDD_UNIQUE_SLOTS, CUDD_CACHE_SLOTS, 0); 
-    Cudd_SetEpsilon(dd_manager, 0);
 
-    cupaal::MarkovModel model;
-    model.manager = dd_manager;
-    model.states = states;
-    model.labels = labels;
-    model.initial_distribution = initial_distribution;
-    model.transitions = transitions;
-    model.emissions = emissions;
+    cupaal::MarkovModel model(states, labels, initial_distribution, transitions, emissions, observations);
     
-    model.initialize_adds();
-    for (const auto& observation : observations) {
-        model.add_observation(observation);
-    }
+
     
     if (model.observations.size() > 1) {
         model.baum_welch_multiple_observations(max_iterations, epsilon, time);
@@ -58,7 +47,6 @@ void bw_wrapping_function(
     }
 
     model.clean_up_cudd();
-    Cudd_Quit(dd_manager);
     const auto program_end = std::chrono::steady_clock::now();
     const auto elapsed_time = program_end - program_start;
     std::cout << "Total time spent(s): " << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) << std::endl;

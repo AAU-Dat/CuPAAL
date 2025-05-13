@@ -12,10 +12,6 @@
 #define COL_VAR_INDEX_OFFSET 1
 #define COL_VAR_INDEX_MULTIPLIER 2
 
-void cupaal::helloworld() {
-    std::cout << "Hello, this is called from BW!" << std::endl;
-}
-
 const std::set<std::string> MODEL_ELEMENTS = {"states", "labels", "initial", "transitions", "emissions"};
 
 DdNode **cupaal::MarkovModel::calculate_alpha(const std::vector<int> &observation) const {
@@ -413,7 +409,6 @@ void cupaal::MarkovModel::initialize_adds(){
     n_row_vars = 0;
     n_col_vars = 0;
     n_vars = ceil(log2(number_of_states));
-    std::cout << "row_vars: " << n_vars << std::endl;
     row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
     col_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
     comp_row_vars = static_cast<DdNode **>(safe_malloc(sizeof(DdNode *), n_vars));
@@ -710,6 +705,7 @@ void cupaal::MarkovModel::clean_up_cudd() const {
         Cudd_RecursiveDeref(manager, comp_row_vars[i]);
         Cudd_RecursiveDeref(manager, comp_col_vars[i]);
     }
+    Cudd_Quit(manager);
 }
 
 double cupaal::MarkovModel::calculate_log_likelihood(DdNode **alpha) const {

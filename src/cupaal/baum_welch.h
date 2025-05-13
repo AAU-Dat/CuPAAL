@@ -14,7 +14,6 @@ namespace cupaal {
         double log_likelihood;
     };
 
-    void helloworld();
     class MarkovModel {
     public:
         DdManager *manager;
@@ -51,21 +50,35 @@ namespace cupaal {
         void baum_welch_multiple_observations(unsigned int max_iterations = 100, double epsilon = 1e-6,
                                               std::chrono::seconds time = std::chrono::seconds(3600));
 
-        
-        void initialize_adds();
-        
-        void initialize_from_file(const std::string &filename);
-
-        void add_observation(const std::vector<std::string> &observation);
-
-        void add_observation_from_file(const std::string &filename);
-
         void export_to_file(const std::string &filename);
 
         void save_experiment_to_csv(const std::string &filename);
 
         void clean_up_cudd() const;
 
+        MarkovModel(std::string model_path, std::string sequences_path){
+            this->manager = Cudd_Init(0, 0, CUDD_UNIQUE_SLOTS, CUDD_CACHE_SLOTS, 0);
+            Cudd_SetEpsilon(this->manager, 0);
+            initialize_from_file(model_path);
+            add_observation_from_file(sequences_path);
+        }
+
+        MarkovModel(std::vector<std::string> states, std::vector<std::string> labels,std::vector<double> initial_distribution, std::vector<double> transitions, std::vector<double> emissions, std::vector<std::vector<std::string>> observations){
+            this->manager = Cudd_Init(0, 0, CUDD_UNIQUE_SLOTS, CUDD_CACHE_SLOTS, 0);
+            Cudd_SetEpsilon(this->manager, 0);
+            this->states = std::move(states);
+            this->labels = std::move(labels);
+            this->initial_distribution = std::move(initial_distribution);
+            this->transitions = std::move(transitions);
+            this->emissions = std::move(emissions);
+            
+            initialize_adds();
+            for (const auto& observation : observations) {
+                add_observation(observation);
+            }
+        }
+
+        
     private:
         std::vector<iterationReport> iteration_reports;
         int number_of_states = 0;
@@ -84,6 +97,11 @@ namespace cupaal {
         DdNode **comp_col_vars = nullptr;
 
         double calculate_log_likelihood(DdNode **alpha) const;
+        void initialize_adds();
+        void initialize_from_file(const std::string &filename);
+        void add_observation_from_file(const std::string &filename);
+        void add_observation(const std::vector<std::string> &observation);
+
     };
 }
 

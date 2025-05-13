@@ -64,6 +64,3 @@ target_include_directories(cupaal_bindings PRIVATE
     ${storm_INCLUDE_DIR}
     ${CMAKE_SOURCE_DIR}/src
 )
-
-
-target_link_libraries(cupaal_bindings PRIVATE pybind11::module)

@@ -51,13 +51,8 @@ int main(const int argc, char *argv[]) {
     parse_input_options(argc, argv);
     std::cout << "Reading model from file: " << options.modelPath << std::endl;
     std::cout << "Reading sequences from file: " << options.sequencesPath << std::endl;
-    DdManager *dd_manager = Cudd_Init(0, 0,CUDD_UNIQUE_SLOTS,CUDD_CACHE_SLOTS, 0);
-    Cudd_SetEpsilon(dd_manager, 0);
 
-    cupaal::MarkovModel model;
-    model.manager = dd_manager;
-    model.initialize_from_file(options.modelPath);
-    model.add_observation_from_file(options.sequencesPath);
+    cupaal::MarkovModel model(options.modelPath, options.sequencesPath);
 
     if (model.observations.size() > 1) {
         model.baum_welch_multiple_observations(options.iterations, options.epsilon, options.time);
@@ -77,8 +72,7 @@ int main(const int argc, char *argv[]) {
     }
 
     model.clean_up_cudd();
-    std::cout << "Remaining references (expecting 0): " << Cudd_CheckZeroRef(dd_manager) << std::endl;
-    Cudd_Quit(dd_manager);
+    std::cout << "Remaining references (expecting 0): " << Cudd_CheckZeroRef(model.manager) << std::endl;
     const auto program_end = std::chrono::steady_clock::now();
     const auto elapsed_time = program_end - program_start;
     std::cout << "Total time spent(s): " << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) << std::endl;
