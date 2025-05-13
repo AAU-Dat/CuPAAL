@@ -1,5 +1,5 @@
 FROM movesrwth/stormpy:1.9.0 AS prep
-LABEL authors="runge"
+LABEL authors="Runge, Lars & Sebastian"
 ARG BUILD_JOBS=8
 
 RUN pip install numpy==1.26.0 && \
