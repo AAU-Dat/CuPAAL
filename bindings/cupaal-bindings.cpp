@@ -51,6 +51,7 @@ void bw_wrapping_function(
     const auto elapsed_time = program_end - program_start;
     std::cout << "Total time spent(s): " << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) << std::endl;
 
+    Cudd_Quit(model.manager);
     exit(EXIT_SUCCESS);
 }
 
