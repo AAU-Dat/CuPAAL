@@ -12,7 +12,6 @@
 
 namespace py = pybind11; 
 
-// Example function
 void bw_wrapping_function(
     const std::vector<std::string>& states,
     const std::vector<std::string>& labels, 
@@ -28,29 +27,25 @@ void bw_wrapping_function(
     const auto program_start = std::chrono::steady_clock::now();
     DdManager *dd_manager = Cudd_Init(0, 0, CUDD_UNIQUE_SLOTS, CUDD_CACHE_SLOTS, 0); 
     Cudd_SetEpsilon(dd_manager, 0);
+
     cupaal::MarkovModel model;
     model.manager = dd_manager;
-
     model.states = states;
     model.labels = labels;
-    model.observations = observations;
     model.initial_distribution = initial_distribution;
     model.transitions = transitions;
-    std::cout << std::setprecision(16) << "transitions: " << model.transitions.front() << std::endl;
     model.emissions = emissions;
     
     model.initialize_adds();
     for (const auto& observation : observations) {
         model.add_observation(observation);
     }
-    std::cout << "hello world" << std::endl;
     
     if (model.observations.size() > 1) {
         model.baum_welch_multiple_observations(max_iterations, epsilon, time);
     } else {
         model.baum_welch(max_iterations, epsilon, time);
     }
-    model.export_to_file("test.txt");
 
     if (!outputPath.empty()) {
         std::cout << "Saving model to: " << outputPath << std::endl;
@@ -63,11 +58,11 @@ void bw_wrapping_function(
     }
 
     model.clean_up_cudd();
-    std::cout << "Remaining references (expecting 0): " << Cudd_CheckZeroRef(dd_manager) << std::endl;
     Cudd_Quit(dd_manager);
     const auto program_end = std::chrono::steady_clock::now();
     const auto elapsed_time = program_end - program_start;
     std::cout << "Total time spent(s): " << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) << std::endl;
+
     exit(EXIT_SUCCESS);
 }
 
@@ -100,7 +95,7 @@ PYBIND11_MODULE(libcupaal_bindings, m) {
                 resultPath
             );
         },
-        py::arg("labels"),
+        py::arg("states"),
         py::arg("labels"),
         py::arg("observations"),
         py::arg("initial_distribution"),
