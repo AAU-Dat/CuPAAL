@@ -1,0 +1,7 @@
+0
+['init', 'empty', 'empty', 'empty', 'empty', 'elected', 'elected', 'elected', 'elected', 'elected', 'elected']
+24
+['init', 'empty', 'empty', 'empty', 'empty', 'init', 'empty', 'empty', 'empty', 'empty', 'elected']
+5
+['init', 'empty', 'empty', 'empty', 'empty', 'init', 'empty', 'empty', 'empty', 'empty', 'init']
+1

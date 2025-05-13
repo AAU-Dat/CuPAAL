@@ -21,34 +21,36 @@ void bw_wrapping_function(
     const std::vector<double>& transitions, 
     const std::vector<double>& emissions, 
     unsigned int max_iterations = 100, 
-    double epsilon = 1e-6, 
+    double epsilon = 1e-2, 
     std::chrono::seconds time = std::chrono::seconds(3600), 
     const std::string& outputPath = "", 
     const std::string& resultPath = "") {
     const auto program_start = std::chrono::steady_clock::now();
     DdManager *dd_manager = Cudd_Init(0, 0, CUDD_UNIQUE_SLOTS, CUDD_CACHE_SLOTS, 0); 
     Cudd_SetEpsilon(dd_manager, 0);
-
     cupaal::MarkovModel model;
     model.manager = dd_manager;
 
-    model.states = 
+    model.states = states;
     model.labels = labels;
     model.observations = observations;
     model.initial_distribution = initial_distribution;
     model.transitions = transitions;
+    std::cout << std::setprecision(16) << "transitions: " << model.transitions.front() << std::endl;
     model.emissions = emissions;
     
     model.initialize_adds();
     for (const auto& observation : observations) {
         model.add_observation(observation);
     }
-
+    std::cout << "hello world" << std::endl;
+    
     if (model.observations.size() > 1) {
         model.baum_welch_multiple_observations(max_iterations, epsilon, time);
     } else {
         model.baum_welch(max_iterations, epsilon, time);
     }
+    model.export_to_file("test.txt");
 
     if (!outputPath.empty()) {
         std::cout << "Saving model to: " << outputPath << std::endl;
@@ -105,7 +107,7 @@ PYBIND11_MODULE(libcupaal_bindings, m) {
         py::arg("transitions"),
         py::arg("emissions"),
         py::arg("max_iterations") = 100,
-        py::arg("epsilon") = 1e-6,
+        py::arg("epsilon") = 1e-2,
         py::arg("time_seconds") = 3600,
         py::arg("outputPath") = "",
         py::arg("resultPath") = "",
