@@ -339,22 +339,22 @@ void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int ma
     unsigned int current_iteration = 1;
     double prev_log_likelihood = -std::numeric_limits<double>::infinity();
     double log_likelihood = 0.0;
-
+    
     std::map<std::vector<int>, int> observation_counts;
     for (const auto &observation: mapped_observations) {
         observation_counts[observation]++;
     }
-
+    
     while (microseconds > 0ms &&
-           current_iteration <= max_iterations &&
-           std::abs(log_likelihood - prev_log_likelihood) >= epsilon) {
-        auto iteration_start = std::chrono::system_clock::now();
-        iterationReport report{};
-        prev_log_likelihood = log_likelihood;
-        log_likelihood = 0;
-        std::vector<DdNode **> gammas;
-        std::vector<DdNode **> xis;
-
+        current_iteration <= max_iterations &&
+        std::abs(log_likelihood - prev_log_likelihood) >= epsilon) {
+            auto iteration_start = std::chrono::system_clock::now();
+            iterationReport report{};
+            prev_log_likelihood = log_likelihood;
+            log_likelihood = 0;
+            std::vector<DdNode **> gammas;
+            std::vector<DdNode **> xis;
+            
         for (const auto &[observation, count]: observation_counts) {
             std::cout << "Calculating alpha for iteration: " << current_iteration << std::endl;
             const auto alpha = calculate_alpha(observation);
@@ -401,30 +401,7 @@ void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int ma
     }
 }
 
-void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        return;
-    }
-
-    std::string currently_parsing;
-    std::string line;
-    while (std::getline(file, line)) {
-        std::string word;
-        std::stringstream line_stream(line);
-        while (std::getline(line_stream, word, ' ')) {
-            if (MODEL_ELEMENTS.contains(word)) {
-                currently_parsing = word;
-                continue;
-            }
-            if (currently_parsing == "states") states.push_back(word);
-            if (currently_parsing == "labels") labels.push_back(word);
-            if (currently_parsing == "initial") initial_distribution.push_back(stod(word));
-            if (currently_parsing == "transitions") transitions.push_back(stod(word));
-            if (currently_parsing == "emissions") emissions.push_back(stod(word));
-        }
-    }
-
+void cupaal::MarkovModel::initialize_adds(){
     number_of_states = static_cast<int>(states.size());
     number_of_labels = static_cast<int>(labels.size());
     dump_n_rows = number_of_states;
@@ -511,6 +488,33 @@ void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
     delete[] cube_array;
 }
 
+void cupaal::MarkovModel::initialize_from_file(const std::string &filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return;
+    }
+
+    std::string currently_parsing;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::string word;
+        std::stringstream line_stream(line);
+        while (std::getline(line_stream, word, ' ')) {
+            if (MODEL_ELEMENTS.contains(word)) {
+                currently_parsing = word;
+                continue;
+            }
+            if (currently_parsing == "states") states.push_back(word);
+            if (currently_parsing == "labels") labels.push_back(word);
+            if (currently_parsing == "initial") initial_distribution.push_back(stod(word));
+            if (currently_parsing == "transitions") transitions.push_back(stod(word));
+            if (currently_parsing == "emissions") emissions.push_back(stod(word));
+        }
+    }
+
+    initialize_adds();
+}
+
 void cupaal::MarkovModel::add_observation(const std::vector<std::string> &observation) {
     std::vector<int> mapped_observation;
     observations.push_back(observation);
@@ -519,6 +523,7 @@ void cupaal::MarkovModel::add_observation(const std::vector<std::string> &observ
     }
     mapped_observations.push_back(mapped_observation);
 }
+
 
 void cupaal::MarkovModel::add_observation_from_file(const std::string &filename) {
     std::ifstream file(filename);

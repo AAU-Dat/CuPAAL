@@ -1,0 +1,99 @@
+#include </usr/include/python3.12/Python.h>
+#include </usr/include/python3.12/pyconfig.h>
+#include <pybind11/pybind11.h>
+#include <pybind11/complex.h>
+#include <pybind11/stl.h>
+#include <pybind11/functional.h>
+#include <pybind11/chrono.h>
+#include <vector>
+#include <string>
+#include <iostream>
+#include "cupaal/baum_welch.h"
+
+namespace py = pybind11; 
+
+void bw_wrapping_function(
+    const std::vector<std::string>& states,
+    const std::vector<std::string>& labels, 
+    const std::vector<std::vector<std::string>>& observations, 
+    const std::vector<double>& initial_distribution, 
+    const std::vector<double>& transitions, 
+    const std::vector<double>& emissions, 
+    unsigned int max_iterations = 100, 
+    double epsilon = 1e-2, 
+    std::chrono::seconds time = std::chrono::seconds(3600), 
+    const std::string& outputPath = "", 
+    const std::string& resultPath = "") {
+    const auto program_start = std::chrono::steady_clock::now();
+
+    cupaal::MarkovModel model(states, labels, initial_distribution, transitions, emissions, observations);
+    
+
+    
+    if (model.observations.size() > 1) {
+        model.baum_welch_multiple_observations(max_iterations, epsilon, time);
+    } else {
+        model.baum_welch(max_iterations, epsilon, time);
+    }
+
+    if (!outputPath.empty()) {
+        std::cout << "Saving model to: " << outputPath << std::endl;
+        model.export_to_file(outputPath);
+    }
+
+    if (!resultPath.empty()) {
+        std::cout << "Saving iteration details to: " << resultPath << std::endl;
+        model.save_experiment_to_csv(resultPath);
+    }
+
+    model.clean_up_cudd();
+    const auto program_end = std::chrono::steady_clock::now();
+    const auto elapsed_time = program_end - program_start;
+    std::cout << "Total time spent(s): " << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) << std::endl;
+
+    Cudd_Quit(model.manager);
+    exit(EXIT_SUCCESS);
+}
+
+
+PYBIND11_MODULE(libcupaal_bindings, m) {
+    m.def("bw_wrapping_function", 
+        [](const std::vector<std::string>& states,
+           const std::vector<std::string>& labels,
+           const std::vector<std::vector<std::string>>& observations,
+           const std::vector<double>& initial_distribution,
+           const std::vector<double>& transitions,
+           const std::vector<double>& emissions,
+           unsigned int max_iterations,
+           double epsilon,
+           int time_seconds,
+           const std::string& outputPath,
+           const std::string& resultPath) {
+            
+            bw_wrapping_function(
+                states,
+                labels,
+                observations,
+                initial_distribution,
+                transitions,
+                emissions,
+                max_iterations,
+                epsilon,
+                std::chrono::seconds(time_seconds),
+                outputPath,
+                resultPath
+            );
+        },
+        py::arg("states"),
+        py::arg("labels"),
+        py::arg("observations"),
+        py::arg("initial_distribution"),
+        py::arg("transitions"),
+        py::arg("emissions"),
+        py::arg("max_iterations") = 100,
+        py::arg("epsilon") = 1e-2,
+        py::arg("time_seconds") = 3600,
+        py::arg("outputPath") = "",
+        py::arg("resultPath") = "",
+        "A wrapper for the Baum-Welch algorithm with Python-friendly chrono input."
+    );}
