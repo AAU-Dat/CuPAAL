@@ -101,6 +101,7 @@ namespace cupaal {
         void initialize_from_file(const std::string &filename);
         void add_observation_from_file(const std::string &filename);
         void add_observation(const std::vector<std::string> &observation);
+        void finalize_matrices();
 
     };
 }
