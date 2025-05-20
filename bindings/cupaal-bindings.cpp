@@ -12,7 +12,13 @@
 
 namespace py = pybind11; 
 
-void bw_wrapping_function(
+struct cupaal_markov_model {
+    std::vector<double> initial_distribution;
+    std::vector<double> transitions;
+    std::vector<double> emissions;
+};
+
+cupaal_markov_model bw_wrapping_function(
     const std::vector<std::string>& states,
     const std::vector<std::string>& labels, 
     const std::vector<std::vector<std::string>>& observations, 
@@ -20,14 +26,14 @@ void bw_wrapping_function(
     const std::vector<double>& transitions, 
     const std::vector<double>& emissions, 
     unsigned int max_iterations = 100, 
-    double epsilon = 1e-2, 
-    std::chrono::seconds time = std::chrono::seconds(3600), 
-    const std::string& outputPath = "", 
-    const std::string& resultPath = "") {
+    double epsilon = 1e-2,
+    const std::string& outputPath = "",
+    const std::string& resultPath = ""){
     const auto program_start = std::chrono::steady_clock::now();
 
     cupaal::MarkovModel model(states, labels, initial_distribution, transitions, emissions, observations);
-    
+    cupaal_markov_model model_data;
+    std::chrono::seconds time = std::chrono::seconds(3600);
 
     
     if (model.observations.size() > 1) {
@@ -51,49 +57,18 @@ void bw_wrapping_function(
     const auto elapsed_time = program_end - program_start;
     std::cout << "Total time spent(s): " << std::chrono::duration_cast<std::chrono::seconds>(elapsed_time) << std::endl;
 
+    model_data.initial_distribution = model.initial_distribution;
+    model_data.transitions = model.transitions;
+    model_data.emissions = model.emissions;
+
     Cudd_Quit(model.manager);
-    exit(EXIT_SUCCESS);
+    return model_data;
 }
 
-
 PYBIND11_MODULE(libcupaal_bindings, m) {
-    m.def("bw_wrapping_function", 
-        [](const std::vector<std::string>& states,
-           const std::vector<std::string>& labels,
-           const std::vector<std::vector<std::string>>& observations,
-           const std::vector<double>& initial_distribution,
-           const std::vector<double>& transitions,
-           const std::vector<double>& emissions,
-           unsigned int max_iterations,
-           double epsilon,
-           int time_seconds,
-           const std::string& outputPath,
-           const std::string& resultPath) {
-            
-            bw_wrapping_function(
-                states,
-                labels,
-                observations,
-                initial_distribution,
-                transitions,
-                emissions,
-                max_iterations,
-                epsilon,
-                std::chrono::seconds(time_seconds),
-                outputPath,
-                resultPath
-            );
-        },
-        py::arg("states"),
-        py::arg("labels"),
-        py::arg("observations"),
-        py::arg("initial_distribution"),
-        py::arg("transitions"),
-        py::arg("emissions"),
-        py::arg("max_iterations") = 100,
-        py::arg("epsilon") = 1e-2,
-        py::arg("time_seconds") = 3600,
-        py::arg("outputPath") = "",
-        py::arg("resultPath") = "",
-        "A wrapper for the Baum-Welch algorithm with Python-friendly chrono input."
-    );}
+    py::class_<cupaal_markov_model>(m, "cupaal_markov_model")
+        .def_readwrite("initial_distribution", &cupaal_markov_model::initial_distribution)
+        .def_readwrite("transitions", &cupaal_markov_model::transitions)
+        .def_readwrite("emissions", &cupaal_markov_model::emissions);
+    m.def("cupaal_bw_symbolic", &bw_wrapping_function, "A wrapper for the Baum-Welch algorithm.");
+}
