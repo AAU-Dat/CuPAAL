@@ -329,6 +329,7 @@ void cupaal::MarkovModel::baum_welch(const unsigned int max_iterations,
         microseconds -= report.running_time_microseconds;
         current_iteration++;
     }
+    finalize_matrices();
 }
 
 void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int max_iterations,
@@ -399,6 +400,7 @@ void cupaal::MarkovModel::baum_welch_multiple_observations(const unsigned int ma
         microseconds -= report.running_time_microseconds;
         current_iteration++;
     }
+    finalize_matrices();
 }
 
 void cupaal::MarkovModel::initialize_adds(){
@@ -524,6 +526,43 @@ void cupaal::MarkovModel::add_observation(const std::vector<std::string> &observ
     mapped_observations.push_back(mapped_observation);
 }
 
+void cupaal::MarkovModel::finalize_matrices()
+{
+    std::vector<double> local_initial_distribution;
+    for (int i = 0; i < number_of_states; i++) {
+        int assignment[2 * n_vars];
+        for (int j = 0; j < n_vars; j++) {
+            assignment[j * 2] = (i >> (n_vars - j - 1)) & 1;
+        }
+        local_initial_distribution.push_back(Cudd_V(Cudd_Eval(manager, pi, assignment)));
+    }
+    initial_distribution = local_initial_distribution;
+
+    std::vector<double> local_transitions;
+    for (int row = 0; row < number_of_states; row++) {
+        for (int col = 0; col < number_of_states; col++) {
+            int assignment[2 * n_vars];
+            for (int i = 0; i < n_vars; i++) {
+                assignment[2 * i] = (row >> (n_vars - i - 1)) & 1;
+                assignment[2 * i + 1] = (col >> (n_vars - i - 1)) & 1;
+            }
+            local_transitions.push_back(Cudd_V(Cudd_Eval(manager, tau, assignment)));
+        }
+    }
+    transitions = local_transitions;
+
+    std::vector<double> local_emissions;
+    for (int row = 0; row < number_of_labels; row++) {
+        for (int col = 0; col < number_of_states; col++) {
+            int assignment[2 * n_vars];
+            for (int j = 0; j < n_vars; j++) {
+                assignment[2 * j] = (col >> (n_vars - j - 1)) & 1;
+            }
+            local_emissions.push_back(Cudd_V(Cudd_Eval(manager, omega[row], assignment)));
+        }
+    }
+    emissions = local_emissions;
+}
 
 void cupaal::MarkovModel::add_observation_from_file(const std::string &filename) {
     std::ifstream file(filename);
