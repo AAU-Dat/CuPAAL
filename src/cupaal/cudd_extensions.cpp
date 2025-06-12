@@ -28,7 +28,7 @@ DdNode *cupaal::addLog(DdManager *dd, DdNode *f) {
     if (cuddIsConstant(f)) {
         const CUDD_VALUE_TYPE value = log(cuddV(f));
         if (value == -std::numeric_limits<double>::infinity()) {
-            return f;
+            return Cudd_ReadZero(dd);
         }
         DdNode *res = cuddUniqueConst(dd, value);
         return (res);

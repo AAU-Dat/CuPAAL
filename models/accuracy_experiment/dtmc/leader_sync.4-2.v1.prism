@@ -5,7 +5,7 @@ dtmc
 
 // CONSTANTS
 const int N = 4; // number of processes
-const int K = 3; // range of probabilistic choice
+const int K = 2; // range of probabilistic choice
 
 // counter module used to count the number of processes that have been read
 // and to know when a process has decided
@@ -51,8 +51,7 @@ module process1
 	
 	// pick value
 	[pick] s1=0 -> 1/K : (s1'=1) & (p1'=0) & (v1'=0) & (u1'=true)
-	             + 1/K : (s1'=1) & (p1'=1) & (v1'=1) & (u1'=true)
-	             + 1/K : (s1'=1) & (p1'=2) & (v1'=2) & (u1'=true);
+	             + 1/K : (s1'=1) & (p1'=1) & (v1'=1) & (u1'=true);
 	// read
 	[read] s1=1 &  u1 & c<N-1 -> (u1'=(p1!=v2)) & (v1'=v2);
 	[read] s1=1 & !u1 & c<N-1 -> (u1'=false) & (v1'=v2) & (p1'=0);
@@ -83,3 +82,4 @@ endrewards
 label "reading" = s1=1;
 label "deciding" = s1=2;
 label "elected" = s1=3&s2=3&s3=3&s4=3;
+

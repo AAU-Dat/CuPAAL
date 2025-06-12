@@ -21,14 +21,13 @@ WORKDIR /CuPAAL
 COPY . .
 
 WORKDIR /CuPAAL/build
-RUN cmake .. && make -j$BUILD_JOBS
+RUN cmake -DCMAKE_BUILD_TYPE=Release .. && make -j$BUILD_JOBS
 
 # run the experiments
 # multistage only used to avoid rebuilding dependencies
 FROM prep AS experiment
-ENV PRISM_FILE=models/accuracy_experiment/dtmc/leader_sync.4-3.v1.prism
 
-COPY $PRISM_FILE $PRISM_FILE
+COPY $PRISM_FILE_PATH $PRISM_FILE_PATH
 COPY --chmod=755 entrypoint.sh .
 COPY jajapy_part.py .
 ENTRYPOINT ["./entrypoint.sh"]

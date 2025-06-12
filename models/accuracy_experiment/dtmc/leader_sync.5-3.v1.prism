@@ -4,7 +4,7 @@
 dtmc
 
 // CONSTANTS
-const int N = 4; // number of processes
+const int N = 5; // number of processes
 const int K = 3; // range of probabilistic choice
 
 // counter module used to count the number of processes that have been read
@@ -19,9 +19,9 @@ module counter
 	// finished reading
 	[read] c=N-1 -> (c'=c);
 	//decide
-	[done] u1|u2|u3|u4 -> (c'=c);
+	[done] u1|u2|u3|u4|u5 -> (c'=c);
 	// pick again reset counter 
-	[retry] !(u1|u2|u3|u4) -> (c'=1);
+	[retry] !(u1|u2|u3|u4|u5) -> (c'=1);
 	// loop (when finished to avoid deadlocks)
 	[loop] s1=3 -> (c'=c);
 	
@@ -72,7 +72,8 @@ endmodule
 // construct remaining processes through renaming
 module process2 = process1 [ s1=s2,p1=p2,v1=v2,u1=u2,v2=v3 ] endmodule
 module process3 = process1 [ s1=s3,p1=p3,v1=v3,u1=u3,v2=v4 ] endmodule
-module process4 = process1 [ s1=s4,p1=p4,v1=v4,u1=u4,v2=v1 ] endmodule
+module process4 = process1 [ s1=s4,p1=p4,v1=v4,u1=u4,v2=v5 ] endmodule
+module process5 = process1 [ s1=s5,p1=p5,v1=v5,u1=u5,v2=v1 ] endmodule
 
 // expected number of rounds
 rewards "num_rounds"
@@ -82,4 +83,5 @@ endrewards
 // labels
 label "reading" = s1=1;
 label "deciding" = s1=2;
-label "elected" = s1=3&s2=3&s3=3&s4=3;
+label "elected" = s1=3&s2=3&s3=3&s4=3&s5=3;
+

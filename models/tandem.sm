@@ -36,3 +36,27 @@ endmodule
 rewards "customers"
 	true : sc + sm;
 endrewards
+
+label "ph_1" = ph = 1;
+label "ph_2" = ph = 2;
+
+label "sc_0" = sc = 0;
+label "sc_1" = sc = 1;
+label "sc_2" = sc = 2;
+label "sc_3" = sc = 3;
+label "sc_4" = sc = 4;
+label "sc_5" = sc = 5;
+label "sc_6" = sc = 6;
+label "sc_7" = sc = 7;
+label "sc_8" = sc = 8;
+label "sc_9" = sc = 9;
+label "sc_10" = sc = 10;
+label "sc_11" = sc = 11;
+label "sc_12" = sc = 12;
+label "sc_13" = sc = 13;
+label "sc_14" = sc = 14;
+label "sc_15" = sc = 15;
+label "sc_16" = sc = 16;
+label "sc_17" = sc = 17;
+label "sc_18" = sc = 18;
+label "sc_19" = sc = 19;

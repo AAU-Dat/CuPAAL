@@ -1,10 +1,12 @@
 services:
   experiment:
     environment:
-      PRISM_MODEL: models/accuracy_experiment/dtmc/leader_sync.4-3.v1.prism
-      ITERATIONS: 1000
-      TIME: 360
+      PRISM_FILE_PATH: models/accuracy_experiment/dtmc/leader_sync.4-3.v1.prism
+      ITERATIONS: 100
+      TIME: 36000
       EPSILON: 0.01
+      OBSERVATION_COUNT: 100
+      OBSERVATION_LENGTH: 25 # 25, 50, 100
     build:
       context: .
       args:
