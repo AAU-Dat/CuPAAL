@@ -637,12 +637,12 @@ void cupaal::MarkovModel::clean_up_cudd() const {
 }
 
 double cupaal::MarkovModel::calculate_log_likelihood(DdNode **alpha) const {
-    const auto log_values = Cudd_addMonadicApply(manager, addLog, alpha[observations[0].size() - 1]);
-    Cudd_Ref(log_values);
-    const auto log_likelihood_add = Cudd_addExistAbstract(manager, log_values, row_cube);
-    Cudd_Ref(log_likelihood_add);
-    const double log_likelihood = Cudd_V(log_likelihood_add);
-    Cudd_RecursiveDeref(manager, log_values);
-    Cudd_RecursiveDeref(manager, log_likelihood_add);
-    return log_likelihood;
+    const auto sum = Cudd_addExistAbstract(manager, alpha[observations[0].size() - 1], row_cube);
+    Cudd_Ref(sum);
+    const auto log = Cudd_addMonadicApply(manager, addLog, sum);
+    Cudd_Ref(log);
+    const double likelihood = Cudd_V(log);
+    Cudd_RecursiveDeref(manager, sum);
+    Cudd_RecursiveDeref(manager, log);
+    return likelihood;
 }
